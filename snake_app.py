@@ -3,8 +3,8 @@ from PyQt5.QtCore import Qt
 import sys
 from typing import List
 from snake import *
-
-SQUARE_SIZE = (8, 8)
+import numpy as np
+SQUARE_SIZE = (16, 16)
 
 
 class SnakeWidget(QtWidgets.QWidget):
@@ -13,6 +13,8 @@ class SnakeWidget(QtWidgets.QWidget):
         self.board_size = board_size
         self.setFixedSize(SQUARE_SIZE[0] * self.board_size[0], SQUARE_SIZE[1] * self.board_size[1])
         self.new_game()
+
+        self.draw_vision = True
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
@@ -41,6 +43,17 @@ class SnakeWidget(QtWidgets.QWidget):
                              point.y * SQUARE_SIZE[1],  # Upper left y-coord
                              SQUARE_SIZE[0],            # Width
                              SQUARE_SIZE[1])            # Height
+
+        if self.draw_vision:
+            angle = (self.snake._direction_to_angle[self.snake.direction]) % 360
+            start = self.snake.snake_array[0]
+            start_x = start.x * SQUARE_SIZE[0] + SQUARE_SIZE[0]/2
+            start_y = start.y * SQUARE_SIZE[1] + SQUARE_SIZE[1]/2  
+            end_x = 50 * np.cos(angle*np.pi/180.) + start.x
+            end_y = 50 * -np.sin(angle*np.pi/180.) + start.y
+            end_x = end_x * SQUARE_SIZE[0] + SQUARE_SIZE[0]/2
+            end_y = end_y * SQUARE_SIZE[1] + SQUARE_SIZE[1]/2
+            painter.drawLine(start_x, start_y, end_x, end_y)
 
     def draw_apple(self, painter: QtGui.QPainter) -> None:
         apple_location = self.snake.apple_location

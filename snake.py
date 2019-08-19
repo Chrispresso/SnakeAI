@@ -1,39 +1,22 @@
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional, Union, Set
+from fractions import Fraction
 import random
 from collections import deque
 import sys
+from misc import *
 
 
-class Point(object):
-    def __init__(self, x: int, y: int):
-        self.x = x
-        self.y = y
 
-    def __eq__(self, other: Union['Point', Tuple[int, int]]) -> bool:
-        if isinstance(other, tuple) and len(other) == 2:
-            return other[0] == self.x and other[1] == self.y
-        elif isinstance(other, Point) and self.x == other.x and self.y == other.y:
-            return True
-        return False
-
-    def __sub__(self, other: Union['Point', Tuple[int, int]]) -> 'Point':
-        if isinstance(other, tuple) and len(other) == 2:
-            diff_x = self.x - other[0]
-            diff_y = self.y - other[1]
-            return Point(diff_x, diff_y)
-        elif isinstance(other, Point):
-            diff_x = self.x - other.x
-            diff_y = self.y - other.y
-            return Point(diff_x, diff_y)
-        return None
-
-    def __rsub__(self, other: Tuple[int, int]):
-        diff_x = other[0] - self.x
-        diff_y = other[1] - self.y
-        return Point(diff_x, diff_y)
-
-    def __str__(self) -> str:
-        return '({}, {})'.format(self.x, self.y)
+class Vision(object):
+    __slots__ = ('dist_to_wall', 'dist_to_apple', 'dist_to_self')
+    def __init__(self,
+                 dist_to_wall: Optional[Union[float, int]] = None,
+                 dist_to_apple: Optional[Union[float, int]] = None,
+                 dist_to_self: Optional[Union[float, int]] = None
+                 ):
+        self.dist_to_wall = float(dist_to_wall) if dist_to_wall else None
+        self.dist_to_apple = float(dist_to_apple) if dist_to_apple else None
+        self.dist_to_self = float(dist_to_self) if dist_to_self else None
 
 
 
@@ -45,6 +28,12 @@ class Snake(object):
                  starting_direction: Optional[str] = None
                  ):
 
+        self._direction_to_angle = {
+            'r': 0.0,
+            'u': 90.0,
+            'l': 180.0,
+            'd': 270.0
+        }
         self.score = 0
         self.board_size = board_size
 
@@ -65,6 +54,30 @@ class Snake(object):
         self.init_snake(starting_direction)
         self.init_velocity(starting_direction, initial_velocity)
         self.generate_apple()
+
+    def look(self, slope: float):
+        pass
+
+    def look_in_direction(self, slope: Slope) -> Vision:
+        dist_to_wall = None
+        dist_to_apple = None
+        dist_to_self = None
+        position = self.snake_array[0].copy()
+        distance = abs(slope.rise) + abs(slope.run)
+        total_distance = 0.0
+        # Can't start by looking at yourself
+        position.x += slope.run
+        position.y += slope.rise
+        total_distance += distance
+        body_found = False  # Only need to find the first occurance since it's the closest
+        # Keep going until the position is out of bounds
+        while self._within_wall(position):
+            pass
+
+    def _within_wall(self, position: Point) -> bool:
+        return position.x >= 0 and position.y >= 0 and \
+               position.x < self.board_size[0] and \
+               position.y < self.board_size[1]
 
     def generate_apple(self) -> None:
         width = self.board_size[0]
@@ -101,6 +114,7 @@ class Snake(object):
             snake = [head, Point(head.x - 1, head.y), Point(head.x - 2, head.y)]
 
         self.snake_array = deque(snake)
+        self._body_locations = set(snake)
         self.is_alive = True
 
     def move(self) -> bool:
@@ -127,12 +141,14 @@ class Snake(object):
         # Is the next position we want to move valid?
         if self._is_valid(next_pos):
             self.snake_array.appendleft(next_pos)
+            self._body_locations.update({next_pos})  # Add next position to the set
             # If we just consumed the apple, generate a new one.
             # No need to pop the tail of the snake since the snake is growing here
             if next_pos == self.apple_location:
                 self.generate_apple()
             else:
-                self.snake_array.pop()
+                tail = self.snake_array.pop()
+                self._body_locations.symmetric_difference_update({tail})  # Remove tail from the set
 
             # Figure out which direction the tail is moving
             p2 = self.snake_array[-2]
@@ -152,6 +168,12 @@ class Snake(object):
             self.is_alive = False
             return False
 
+    def _is_apple_position(self, position: Point) -> bool:
+        return position == self.apple_location
+
+    def _is_body_location(self, position: Point) -> bool:
+        return position in self._body_locations
+
     def _is_valid(self, position: Point) -> bool:
         """
         Determine whether a given position is valid.
@@ -163,13 +185,15 @@ class Snake(object):
         if (position.y < 0) or (position.y > self.board_size[1] - 1):
             return False
 
-        for pos in self.snake_array:
-            if pos == self.snake_array[-1]:
-                continue
-            elif pos == position:
-                return False
-        
-        return True
+        if position == self.snake_array[-1]:
+            return True
+        # If the position is a body location, not valid.
+        # @NOTE: _body_locations will contain tail, so need to check tail first
+        elif position in self._body_locations:
+            return False
+        # Otherwise you good
+        else:
+            return True
 
     def init_velocity(self, starting_direction, initial_velocity: Optional[str] = None) -> None:
         if initial_velocity:
