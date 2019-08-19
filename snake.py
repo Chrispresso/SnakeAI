@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Tuple, Optional, Union, Set
 from fractions import Fraction
 import random
@@ -10,14 +11,24 @@ from misc import *
 class Vision(object):
     __slots__ = ('dist_to_wall', 'dist_to_apple', 'dist_to_self')
     def __init__(self,
-                 dist_to_wall: Optional[Union[float, int]] = None,
+                 dist_to_wall: Union[float, int],
                  dist_to_apple: Optional[Union[float, int]] = None,
                  dist_to_self: Optional[Union[float, int]] = None
                  ):
-        self.dist_to_wall = float(dist_to_wall) if dist_to_wall else None
+        self.dist_to_wall = float(dist_to_wall)
         self.dist_to_apple = float(dist_to_apple) if dist_to_apple else None
         self.dist_to_self = float(dist_to_self) if dist_to_self else None
 
+class DrawableVision(object):
+    __slots__ = ('wall_location', 'apple_location', 'self_location')
+    def __init__(self,
+                wall_location: Point,
+                apple_location: Optional[Point] = None,
+                self_location: Optional[Point] = None,
+                ):
+        self.wall_location = wall_location
+        self.apple_location = apple_location
+        self.self_location = self_location
 
 
 class Snake(object):
@@ -43,6 +54,11 @@ class Snake(object):
             start_pos = Point(x, y)
         self.start_pos = start_pos
 
+        self._vision_type = VISION_8
+        self._vision: List[Vision] = [None] * len(self._vision_type)
+        # This is just used so I can draw and is not actually used in the NN
+        self._drawable_vision: List[DrawableVision] = [None] * len(self._vision_type)
+
         # For creating the next apple
         self.rand_apple = random.Random(seed)
 
@@ -55,13 +71,22 @@ class Snake(object):
         self.init_velocity(starting_direction, initial_velocity)
         self.generate_apple()
 
-    def look(self, slope: float):
-        pass
+    def look(self):
+        # Look all around
+        for i, slope in enumerate(self._vision_type):
+            vision, drawable_vision = self.look_in_direction(slope)
+            self._vision[i] = vision
+            self._drawable_vision[i] = drawable_vision
 
-    def look_in_direction(self, slope: Slope) -> Vision:
+    def look_in_direction(self, slope: Slope) -> Tuple[Vision, DrawableVision]:
         dist_to_wall = None
-        dist_to_apple = None
-        dist_to_self = None
+        dist_to_apple = np.inf
+        dist_to_self = np.inf
+
+        wall_location = None
+        apple_location = None
+        self_location = None
+
         position = self.snake_array[0].copy()
         distance = abs(slope.rise) + abs(slope.run)
         total_distance = 0.0
@@ -70,9 +95,43 @@ class Snake(object):
         position.y += slope.rise
         total_distance += distance
         body_found = False  # Only need to find the first occurance since it's the closest
+        food_found = False  # Although there is only one food, stop looking once you find it
+
         # Keep going until the position is out of bounds
         while self._within_wall(position):
+            if not body_found and self._is_body_location(position):
+                dist_to_self = total_distance
+                self_location = position.copy()
+                body_found = True
+            if not food_found and self._is_apple_location(position):
+                dist_to_apple = total_distance
+                apple_location = position.copy()
+                food_found = True
+
+            wall_location = position
+            position.x += slope.run
+            position.y += slope.rise
+            total_distance += distance
+
+
+        # Special case if it can move 3 (i.e. slope is 2)
+        if distance == 3:
+            # @TODO: The distance may need to be changed since the slope can run past the edge of the board
             pass
+
+        # Normalize where 0 is really far, 1 is really close
+        # @TODO: Will it matter that total_distance here can't be 1?
+        # @TODO: Could also change it to either:
+        #            total_distance += 1   or
+        #            normalize with distance as numerator
+        dist_to_wall = 1.0 / total_distance
+        dist_to_apple = 1.0 / dist_to_apple
+        dist_to_self = 1.0 / dist_to_self
+
+        vision = Vision(dist_to_wall, dist_to_apple, dist_to_self)
+        drawable_vision = DrawableVision(wall_location, apple_location, self_location)
+        return (vision, drawable_vision)
+
 
     def _within_wall(self, position: Point) -> bool:
         return position.x >= 0 and position.y >= 0 and \
@@ -116,6 +175,13 @@ class Snake(object):
         self.snake_array = deque(snake)
         self._body_locations = set(snake)
         self.is_alive = True
+
+    def update(self):
+        if self.move():
+            self.look()
+            return True
+        else:
+            return False
 
     def move(self) -> bool:
         if not self.is_alive:
@@ -168,7 +234,7 @@ class Snake(object):
             self.is_alive = False
             return False
 
-    def _is_apple_position(self, position: Point) -> bool:
+    def _is_apple_location(self, position: Point) -> bool:
         return position == self.apple_location
 
     def _is_body_location(self, position: Point) -> bool:
