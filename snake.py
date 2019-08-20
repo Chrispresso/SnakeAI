@@ -36,7 +36,8 @@ class Snake(object):
                  start_pos: Optional[Point] = None,
                  seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
-                 starting_direction: Optional[str] = None
+                 starting_direction: Optional[str] = None,
+                 hidden_layer_architecture: Optional[List[int]] = [12, 9]
                  ):
 
         self._direction_to_angle = {
@@ -45,6 +46,7 @@ class Snake(object):
             'l': 180.0,
             'd': 270.0
         }
+    
         self.score = 0
         self.board_size = board_size
 
@@ -58,6 +60,16 @@ class Snake(object):
         self._vision: List[Vision] = [None] * len(self._vision_type)
         # This is just used so I can draw and is not actually used in the NN
         self._drawable_vision: List[DrawableVision] = [None] * len(self._vision_type)
+
+        # Setting up network architecture
+        # Each "Vision" has 3 distances it tracks: wall, apple and self
+        # there are also one-hot encoded direction and one-hot encoded tail direction,
+        # each of which have 4 possibilities.
+        num_inputs = len(self._vision_type) * 3 + 4 + 4
+        self.network_architecture = [num_inputs]                     # Inputs
+        self.network_architecture.extend(hidden_layer_architecture)  # Hidden layers
+        self.network_architecture.extend(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
+
 
         # For creating the next apple
         self.rand_apple = random.Random(seed)
