@@ -8,23 +8,42 @@ sigmoid = ActivationFunction(lambda X: 1.0 / (1.0 + np.exp(-X)))
 tanh = ActivationFunction(lambda X: np.tanh(X))
 relu = ActivationFunction(lambda X: np.maximum(0, X))
 leaky_relu = ActivationFunction(lambda X: np.where(X > 0, X, X * 0.01))
+linear = ActivationFunction(lambda X: X)
 
 
 class FeedForwardNetwork(object):
     def __init__(self,
-                 num_inputs: int,
-                 hidden_layers: List[int],
-                 hidden_activation_type: ActivationFunction,
-                 output_activation_type: ActivationFunction,
+                 layer_nodes: List[int],
+                 hidden_activation: ActivationFunction,
+                 output_activation: ActivationFunction,
                  init_method: Optional[str] = 'xavier',
                  seed: Optional[int] = None):
         self.params = {}
-        self.num_inputs = num_inputs
-        self.hidden_layers = hidden_layers
+        self.layer_nodes = layer_nodes
+        self.hidden_activation = hidden_activation
+        self.output_activation = output_activation
 
-        L = len(self.hidden_layers)
         # Initialize weights
-        for layer in hidde
+        for l in range(1, len(self.layer_nodes)):
+            # self.params['W' + str(l)] = np.random.randn(self.layer_nodes[l], self.layer_nodes[l-1]) * 0.01
+            self.params['b' + str(l)] = np.zeros((self.layer_nodes[l], 1))
+            self.params['W' + str(l)] = np.ones((self.layer_nodes[l], self.layer_nodes[l-1]))
+        
+    def feed_forward(self, X: np.ndarray) -> np.ndarray:
+        A_prev = X
+        L = len(self.layer_nodes) - 1  # len(self.params) // 2
 
+        # Feed hidden layers
+        for l in range(1, L):
+            W = self.params['W' + str(l)]
+            b = self.params['b' + str(l)]
+            Z = np.dot(W, A_prev) + b
+            A_prev = self.hidden_activation(Z)
 
-    def feed_forward(self):
+        # Feed output
+        W = self.params['W' + str(L)]
+        b = self.params['b' + str(L)]
+        Z = np.dot(W, A_prev)
+        out = self.output_activation(Z)
+
+        return out
