@@ -68,7 +68,7 @@ class Snake(object):
         num_inputs = len(self._vision_type) * 3 + 4 + 4
         self.network_architecture = [num_inputs]                     # Inputs
         self.network_architecture.extend(hidden_layer_architecture)  # Hidden layers
-        self.network_architecture.extend(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
+        self.network_architecture.append(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
 
 
         # For creating the next apple
