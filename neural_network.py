@@ -58,5 +58,3 @@ class FeedForwardNetwork(object):
 
     def softmax(self, X: np.ndarray) -> np.ndarray:
         return np.exp(X) / np.sum(np.exp(X), axis=0)
-
-

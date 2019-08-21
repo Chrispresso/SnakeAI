@@ -24,9 +24,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.width = self.snake_widget_width + 600 + 2*self.border[0]
         self.height = self.snake_widget_height + 2*self.border[1]
         self.ff = FeedForwardNetwork([8*3+8,12,9,4], sigmoid, linear)
+        self.snake = Snake(board_size, seed=0)
 
         self.init_window()
+
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.update)
+        # self.timer.start(1000./15)
+
         self.show()
+        self.update()
 
     def init_window(self):
         self.centralWidget = QtWidgets.QWidget(self)
@@ -35,29 +42,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setGeometry(self.top, self.left, self.width, self.height)
 
         # Create the Neural Network window
-        self.nn_viz_window = NeuralNetworkViz(self.centralWidget, self.ff)
+        self.nn_viz_window = NeuralNetworkViz(self.centralWidget, self.ff, self.snake)
         self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self.snake_widget_height + 2*self.border[1]))
         self.nn_viz_window.setObjectName('nn_viz_window')
 
         # Create SnakeWidget window
-        self.snake_widget_window = SnakeWidget(self.centralWidget, self.board_size)
+        self.snake_widget_window = SnakeWidget(self.centralWidget, self.board_size, self.snake)
         self.snake_widget_window.setGeometry(QtCore.QRect(600 + self.border[0], self.border[1], self.snake_widget_width, self.snake_widget_height))
         self.snake_widget_window.setObjectName('snake_widget_window')
 
+    def update(self) -> None:
+        self.snake_widget_window.update()
+        self.nn_viz_window.update()
+
 
 class SnakeWidget(QtWidgets.QWidget):
-    def __init__(self, parent, board_size=(50, 50)):
+    def __init__(self, parent, board_size=(50, 50), snake=None):
         super().__init__(parent)
         self.board_size = board_size
         # self.setFixedSize(SQUARE_SIZE[0] * self.board_size[0], SQUARE_SIZE[1] * self.board_size[1])
         self.new_game()
+        if snake:
+            self.snake = snake
         self.setFocus()
 
         self.draw_vision = True
-
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.update)
-        self.timer.start(1000./15)
         self.show()
 
     def new_game(self) -> None:

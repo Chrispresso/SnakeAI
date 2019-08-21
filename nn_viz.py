@@ -3,13 +3,14 @@ from PyQt5.QtCore import Qt
 import sys
 from typing import List
 from neural_network import *
-
+from snake import Snake
 
 
 class NeuralNetworkViz(QtWidgets.QWidget):
-    def __init__(self, parent, network: FeedForwardNetwork):
+    def __init__(self, parent, network: FeedForwardNetwork, snake: Snake):
         super().__init__(parent)
         self.network = network
+        self.snake = snake
         self.horizontal_distance_between_layers = 50
         self.vertical_distance_between_nodes = 10
         self.num_neurons_in_largest_layer = max(self.network.layer_nodes)
@@ -23,8 +24,12 @@ class NeuralNetworkViz(QtWidgets.QWidget):
         painter.begin(self)
 
         self.show_network(painter)
+        print(self.snake.snake_array[0])
         
         painter.end()
+
+    def update(self) -> None:
+        self.repaint()
 
     def show_network(self, painter: QtGui.QPainter):
         painter.setRenderHints(QtGui.QPainter.Antialiasing)
