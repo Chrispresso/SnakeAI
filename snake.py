@@ -12,12 +12,12 @@ class Vision(object):
     __slots__ = ('dist_to_wall', 'dist_to_apple', 'dist_to_self')
     def __init__(self,
                  dist_to_wall: Union[float, int],
-                 dist_to_apple: Optional[Union[float, int]] = None,
-                 dist_to_self: Optional[Union[float, int]] = None
+                 dist_to_apple: Union[float, int],
+                 dist_to_self: Union[float, int]
                  ):
         self.dist_to_wall = float(dist_to_wall)
-        self.dist_to_apple = float(dist_to_apple) if dist_to_apple else None
-        self.dist_to_self = float(dist_to_self) if dist_to_self else None
+        self.dist_to_apple = float(dist_to_apple)
+        self.dist_to_self = float(dist_to_self)
 
 class DrawableVision(object):
     __slots__ = ('wall_location', 'apple_location', 'self_location')
@@ -48,6 +48,8 @@ class Snake(object):
         }
     
         self.score = 0
+        self.possible_directions = ('u', 'd', 'l', 'r')
+
         self.board_size = board_size
 
         if not start_pos:
@@ -66,6 +68,7 @@ class Snake(object):
         # there are also one-hot encoded direction and one-hot encoded tail direction,
         # each of which have 4 possibilities.
         num_inputs = len(self._vision_type) * 3 + 4 + 4
+        self.vision_as_array: np.ndarray = np.zeros((num_inputs, 1))
         self.network_architecture = [num_inputs]                     # Inputs
         self.network_architecture.extend(hidden_layer_architecture)  # Hidden layers
         self.network_architecture.append(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
@@ -78,7 +81,7 @@ class Snake(object):
         if starting_direction:
             starting_direction = starting_direction[0].lower()
         else:
-            starting_direction = ('u', 'd', 'l', 'r')[random.randint(0, 3)]
+            starting_direction = self.possible_directions[random.randint(0, 3)]
         self.init_snake(starting_direction)
         self.init_velocity(starting_direction, initial_velocity)
         self.generate_apple()
@@ -89,6 +92,10 @@ class Snake(object):
             vision, drawable_vision = self.look_in_direction(slope)
             self._vision[i] = vision
             self._drawable_vision[i] = drawable_vision
+        
+        # Update the input array
+        self._vision_as_input_array()
+
 
     def look_in_direction(self, slope: Slope) -> Tuple[Vision, DrawableVision]:
         dist_to_wall = None
@@ -124,6 +131,7 @@ class Snake(object):
             position.x += slope.run
             position.y += slope.rise
             total_distance += distance
+        assert(total_distance != 0.0)
 
 
         # Special case if it can move 3 (i.e. slope is 2)
@@ -139,11 +147,43 @@ class Snake(object):
         dist_to_wall = 1.0 / total_distance
         dist_to_apple = 1.0 / dist_to_apple
         dist_to_self = 1.0 / dist_to_self
+        # if dist_to_apple == np.inf:
+        #     dist_to_apple = 0.0
+        # else:
+        #     dist_to_apple = 1.0 / dist_to_apple
+
+        # if dist_to_self == np.inf:
+        #     dist_to_self = 0.0
+        # else:
+        #     dist_to_self = 1.0 / dist_to_self
 
         vision = Vision(dist_to_wall, dist_to_apple, dist_to_self)
         drawable_vision = DrawableVision(wall_location, apple_location, self_location)
         return (vision, drawable_vision)
 
+    def _vision_as_input_array(self) -> None:
+        # Split _vision into np array where rows [0-2] are _vision[0].dist_to_wall, _vision[0].dist_to_apple, _vision[0].dist_to_self,
+        # rows [3-5] are _vision[1].dist_to_wall, _vision[1].dist_to_apple, _vision[1].dist_to_self, etc. etc. etc.
+        for va_index, v_index in zip(range(0, len(self._vision) * 3, 3), range(len(self._vision))):
+            vision = self._vision[v_index]
+            self.vision_as_array[va_index, 0]     = vision.dist_to_wall
+            self.vision_as_array[va_index + 1, 0] = vision.dist_to_apple
+            self.vision_as_array[va_index + 2, 0] = vision.dist_to_self
+
+        i = len(self._vision) * 3  # Start at the end
+
+        direction = self.direction[0].lower()
+        # One-hot encode direction
+        direction_one_hot = np.zeros((len(self.possible_directions), 1))
+        direction_one_hot[self.possible_directions.index(direction), 0] = 1
+        self.vision_as_array[i: i + len(self.possible_directions)] = direction_one_hot
+
+        i += len(self.possible_directions)
+
+        # One-hot tail direction
+        tail_direction_one_hot = np.zeros((len(self.possible_directions), 1))
+        tail_direction_one_hot[self.possible_directions.index(self.tail_direction), 0] = 1
+        self.vision_as_array[i: i + len(self.possible_directions)] = tail_direction_one_hot
 
     def _within_wall(self, position: Point) -> bool:
         return position.x >= 0 and position.y >= 0 and \
@@ -189,7 +229,9 @@ class Snake(object):
         self.is_alive = True
 
     def update(self):
-        if self.move():
+        # if self.move():
+        if self.is_alive:
+            # self.move()
             self.look()
             return True
         else:
@@ -201,7 +243,7 @@ class Snake(object):
 
         direction = self.direction[0].lower()
         # Is the direction valid?
-        if direction not in ('u', 'd', 'l', 'r'):
+        if direction not in self.possible_directions:
             return False
         
         # Find next position

@@ -11,18 +11,19 @@ from neural_network import FeedForwardNetwork, sigmoid, linear, relu
 SQUARE_SIZE = (16, 16)
 
 
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, board_size=(50, 50)):
         super().__init__()
         self.board_size = board_size
-        self.border = (10, 10)
+        self.border = (10, 10, 10, 150)  # Left, Top, Right, Bottom
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
         self.snake_widget_height = max(SQUARE_SIZE[1] * self.board_size[1], 800)
 
         self.top = 150
         self.left = 150
-        self.width = self.snake_widget_width + 600 + 2*self.border[0]
-        self.height = self.snake_widget_height + 2*self.border[1]
+        self.width = self.snake_widget_width + 600 + self.border[0] + self.border[2]
+        self.height = self.snake_widget_height + self.border[1] + self.border[3]
         self.ff = FeedForwardNetwork([8*3+8,12,9,4], sigmoid, linear)
         self.snake = Snake(board_size, seed=0)
 
@@ -30,7 +31,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
-        # self.timer.start(1000./15)
+        self.timer.start(1000./15)
 
         self.show()
         self.update()
@@ -43,7 +44,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create the Neural Network window
         self.nn_viz_window = NeuralNetworkViz(self.centralWidget, self.ff, self.snake)
-        self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self.snake_widget_height + 2*self.border[1]))
+        self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self.snake_widget_height + self.border[1] + self.border[3]))
         self.nn_viz_window.setObjectName('nn_viz_window')
 
         # Create SnakeWidget window

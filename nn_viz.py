@@ -24,7 +24,6 @@ class NeuralNetworkViz(QtWidgets.QWidget):
         painter.begin(self)
 
         self.show_network(painter)
-        print(self.snake.snake_array[0])
         
         painter.end()
 
@@ -45,7 +44,7 @@ class NeuralNetworkViz(QtWidgets.QWidget):
         default_offset = 30
         h_offset = default_offset
         # inputs = np.array([[1], [0], [3]])
-        inputs = np.random.uniform(-1, 1, size=(8*3+8, 1))
+        inputs = self.snake.vision_as_array
         out = self.network.feed_forward(inputs)
         max_out = np.argmax(out)
         
@@ -67,7 +66,7 @@ class NeuralNetworkViz(QtWidgets.QWidget):
                 # Input layer
                 if layer == 0:
                     # Is there a value being fed in
-                    if inputs[node] > 0:
+                    if inputs[node, 0] > 0:
                         painter.setBrush(QtGui.QBrush(Qt.green))
                     else:
                         painter.setBrush(QtGui.QBrush(Qt.white))
