@@ -6,6 +6,7 @@ from snake import *
 import numpy as np
 from nn_viz import NeuralNetworkViz
 from neural_network import FeedForwardNetwork, sigmoid, linear, relu
+from settings import settings
 
 
 SQUARE_SIZE = (16, 16)
@@ -16,14 +17,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, board_size=(50, 50)):
         super().__init__()
         self.board_size = board_size
-        self.border = (10, 10, 10, 150)  # Left, Top, Right, Bottom
+        self.border = (10, 10, 10, 10)  # Left, Top, Right, Bottom
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
         self.snake_widget_height = max(SQUARE_SIZE[1] * self.board_size[1], 800)
 
         self.top = 150
         self.left = 150
         self.width = self.snake_widget_width + 600 + self.border[0] + self.border[2]
-        self.height = self.snake_widget_height + self.border[1] + self.border[3]
+        self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
         self.ff = FeedForwardNetwork([8*3+8,12,9,4], sigmoid, linear)
         self.snake = Snake(board_size, seed=0)
 
@@ -44,7 +45,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create the Neural Network window
         self.nn_viz_window = NeuralNetworkViz(self.centralWidget, self.ff, self.snake)
-        self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self.snake_widget_height + self.border[1] + self.border[3]))
+        self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self.snake_widget_height + self.border[1] + self.border[3] + 200))
         self.nn_viz_window.setObjectName('nn_viz_window')
 
         # Create SnakeWidget window
@@ -52,10 +53,88 @@ class MainWindow(QtWidgets.QMainWindow):
         self.snake_widget_window.setGeometry(QtCore.QRect(600 + self.border[0], self.border[1], self.snake_widget_width, self.snake_widget_height))
         self.snake_widget_window.setObjectName('snake_widget_window')
 
+        # Genetic Algorithm Stats window
+        self.ga_window = GeneticAlgoWidget(self.centralWidget, settings)
+        self.ga_window.setGeometry(QtCore.QRect(600, self.border[1] + self.border[3] + self.snake_widget_height, self.snake_widget_width + self.border[0] + self.border[2], 200))
+        self.ga_window.setObjectName('ga_window')
+
+
     def update(self) -> None:
         self.snake_widget_window.update()
         self.nn_viz_window.update()
 
+class GeneticAlgoWidget(QtWidgets.QWidget):
+    def __init__(self, parent, settings):
+        super().__init__(parent)
+        self._generation_label = QtWidgets.QLabel()
+        self._generation_label.setText('Generation: ')
+        self._generation_label.setFont(QtGui.QFont('Times', 18, QtGui.QFont.Bold))
+        # self._generation_label.setAlignment(Qt.AlignLeft)
+
+        self.current_generation = QtWidgets.QLabel()
+        self.current_generation.setText('1')
+        self.current_generation.setFont(QtGui.QFont('Times', 18, QtGui.QFont.Normal))
+        # self.current_generation.setAlignment(Qt.AlignLeft)
+    
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.setSpacing(0)
+        hbox.setContentsMargins(0, 0, 0, 0)
+
+        font = QtGui.QFont('Times', 13, QtGui.QFont.Normal)
+        
+        generation_hbox = QtWidgets.QHBoxLayout()
+        generation_hbox.setSpacing(0)
+        generation_hbox.setContentsMargins(0, 0, 0, 0)
+        generation_hbox.addWidget(self._generation_label, 0, Qt.AlignLeft | Qt.AlignTop)
+        generation_hbox.addWidget(self.current_generation, 1, Qt.AlignLeft | Qt.AlignTop)
+    
+        # GA Setting
+        ga_setting = self._create_hbox_setting('GA Settings', '', QtGui.QFont('Times', 18, QtGui.QFont.Bold))
+        # Seleting type
+        selection_type = ' '.join([word.lower().capitalize() for word in settings['selection_type'].split('_')])
+        selection_type_hbox = self._create_hbox_setting('Selection Type: ', selection_type, font)
+        # Crossover type
+        crossover_type = settings['crossover_type']
+        crossover_type_hbox = self._create_hbox_setting('Crossover Type: ', crossover_type, font)
+        # Elitism
+        num_elitsm = str(settings['num_elitism'])
+        num_elitism_hbox = self._create_hbox_setting('Number of Elitism: ', num_elitsm, font)
+
+        grid = QtWidgets.QGridLayout()
+
+        
+        grid.addLayout(generation_hbox, 0, 0, Qt.AlignLeft | Qt.AlignTop)
+        grid.addLayout(ga_setting, 0, 1, Qt.AlignLeft | Qt.AlignTop)
+        grid.addLayout(selection_type_hbox, 1, 1, Qt.AlignLeft | Qt.AlignTop)
+        grid.addLayout(crossover_type_hbox, 2, 1, Qt.AlignLeft | Qt.AlignTop)
+        grid.addLayout(num_elitism_hbox, 3, 1, Qt.AlignLeft | Qt.AlignTop)
+        # grid.addLayout(vbox2, 0, 1)
+        
+
+        
+
+        self.setLayout(grid)
+        
+        self.show()
+
+    def _create_hbox_setting(self, setting_name: str, setting_value: str, font: QtGui.QFont) -> QtWidgets.QHBoxLayout:
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.setSpacing(10)
+        hbox.setContentsMargins(0, 0, 0, 0)
+        # Setting name label
+        setting_name_lbl = QtWidgets.QLabel()
+        setting_name_lbl.setText(setting_name)
+        setting_name_lbl.setFont(font)
+        # Setting value label
+        setting_value_lbl = QtWidgets.QLabel()
+        setting_value_lbl.setText(setting_value)
+        setting_value_lbl.setFont(font)
+        # Add it to the box
+        hbox.addWidget(setting_name_lbl, 0, Qt.AlignLeft | Qt.AlignTop)
+        # hbox.addSpacing(10)
+        hbox.addWidget(setting_value_lbl, 1, Qt.AlignLeft | Qt.AlignTop)
+
+        return hbox
 
 class SnakeWidget(QtWidgets.QWidget):
     def __init__(self, parent, board_size=(50, 50), snake=None):
