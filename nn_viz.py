@@ -7,13 +7,12 @@ from snake import Snake
 
 
 class NeuralNetworkViz(QtWidgets.QWidget):
-    def __init__(self, parent, network: FeedForwardNetwork, snake: Snake):
+    def __init__(self, parent, snake: Snake):
         super().__init__(parent)
-        self.network = network
         self.snake = snake
         self.horizontal_distance_between_layers = 50
         self.vertical_distance_between_nodes = 10
-        self.num_neurons_in_largest_layer = max(self.network.layer_nodes)
+        self.num_neurons_in_largest_layer = max(self.snake.network.layer_nodes)
         # self.setFixedSize(600,800)
         self.neuron_locations = {}
         self.show()
@@ -39,21 +38,21 @@ class NeuralNetworkViz(QtWidgets.QWidget):
         radius = 8
         height = self.frameGeometry().height()
         width = self.frameGeometry().width()
-        layer_nodes = self.network.layer_nodes
+        layer_nodes = self.snake.network.layer_nodes
 
         default_offset = 30
         h_offset = default_offset
         # inputs = np.array([[1], [0], [3]])
         inputs = self.snake.vision_as_array
-        out = self.network.feed_forward(inputs)
-        max_out = np.argmax(out)
+        # out = self.snake.network.feed_forward(inputs)  # @TODO: shouldnt need this
+        max_out = np.argmax(self.snake.network.out)
         
         # Draw nodes
         for layer, num_nodes in enumerate(layer_nodes):
             v_offset = (height - ((2*radius + vertical_space) * num_nodes))/2
             activations = None
             if layer > 0:
-                activations = self.network.params['A' + str(layer)]
+                activations = self.snake.network.params['A' + str(layer)]
 
             for node in range(num_nodes):
                 x_loc = h_offset
@@ -92,7 +91,7 @@ class NeuralNetworkViz(QtWidgets.QWidget):
         # Draw weights
         # For each layer starting at 1
         for l in range(1, len(layer_nodes)):
-            weights = self.network.params['W' + str(l)]
+            weights = self.snake.network.params['W' + str(l)]
             prev_nodes = weights.shape[1]
             curr_nodes = weights.shape[0]
             # For each node from the previous layer

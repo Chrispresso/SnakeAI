@@ -7,6 +7,8 @@ import numpy as np
 from nn_viz import NeuralNetworkViz
 from neural_network import FeedForwardNetwork, sigmoid, linear, relu
 from settings import settings
+from genetic_algorithm.population import Population
+
 
 
 SQUARE_SIZE = (16, 16)
@@ -25,14 +27,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.left = 150
         self.width = self.snake_widget_width + 600 + self.border[0] + self.border[2]
         self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
-        self.ff = FeedForwardNetwork([8*3+8,12,9,4], sigmoid, linear)
-        self.snake = Snake(board_size, seed=0)
+        
+        individuals = [Snake(board_size) for _ in range(20)]
+        self.population = Population(individuals)
+
+        self._i = 0
+        self.snake = self.population.individuals[self._i]
 
         self.init_window()
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
-        self.timer.start(1000./15)
+        self.timer.start(1000./20)
 
         self.show()
         self.update()
@@ -44,7 +50,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setGeometry(self.top, self.left, self.width, self.height)
 
         # Create the Neural Network window
-        self.nn_viz_window = NeuralNetworkViz(self.centralWidget, self.ff, self.snake)
+        self.nn_viz_window = NeuralNetworkViz(self.centralWidget, self.snake)
         self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self.snake_widget_height + self.border[1] + self.border[3] + 200))
         self.nn_viz_window.setObjectName('nn_viz_window')
 
@@ -62,79 +68,114 @@ class MainWindow(QtWidgets.QMainWindow):
     def update(self) -> None:
         self.snake_widget_window.update()
         self.nn_viz_window.update()
+        if self.snake.is_alive:
+            self.snake.move()
+        else:
+            self.population.individuals[self._i].calculate_fitness()
+            print('Fitness {}: {}'.format(self._i, self.population.individuals[self._i].fitness))
+            # Next individual in population
+            self._i += 1
+            
+            if self._i == 20:
+                import sys
+                sys.exit(-1)
+            self.snake = self.population.individuals[self._i]
+            self.snake_widget_window.snake = self.snake
+            self.nn_viz_window.snake = self.snake
+
 
 class GeneticAlgoWidget(QtWidgets.QWidget):
     def __init__(self, parent, settings):
         super().__init__(parent)
-        self._generation_label = QtWidgets.QLabel()
-        self._generation_label.setText('Generation: ')
-        self._generation_label.setFont(QtGui.QFont('Times', 18, QtGui.QFont.Bold))
-        # self._generation_label.setAlignment(Qt.AlignLeft)
-
-        self.current_generation = QtWidgets.QLabel()
-        self.current_generation.setText('1')
-        self.current_generation.setFont(QtGui.QFont('Times', 18, QtGui.QFont.Normal))
-        # self.current_generation.setAlignment(Qt.AlignLeft)
-    
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.setSpacing(0)
-        hbox.setContentsMargins(0, 0, 0, 0)
-
         font = QtGui.QFont('Times', 13, QtGui.QFont.Normal)
-        
-        generation_hbox = QtWidgets.QHBoxLayout()
-        generation_hbox.setSpacing(0)
-        generation_hbox.setContentsMargins(0, 0, 0, 0)
-        generation_hbox.addWidget(self._generation_label, 0, Qt.AlignLeft | Qt.AlignTop)
-        generation_hbox.addWidget(self.current_generation, 1, Qt.AlignLeft | Qt.AlignTop)
-    
-        # GA Setting
-        ga_setting = self._create_hbox_setting('GA Settings', '', QtGui.QFont('Times', 18, QtGui.QFont.Bold))
-        # Seleting type
-        selection_type = ' '.join([word.lower().capitalize() for word in settings['selection_type'].split('_')])
-        selection_type_hbox = self._create_hbox_setting('Selection Type: ', selection_type, font)
-        # Crossover type
-        crossover_type = settings['crossover_type']
-        crossover_type_hbox = self._create_hbox_setting('Crossover Type: ', crossover_type, font)
-        # Elitism
-        num_elitsm = str(settings['num_elitism'])
-        num_elitism_hbox = self._create_hbox_setting('Number of Elitism: ', num_elitsm, font)
+        font_bold = QtGui.QFont('Times', 13, QtGui.QFont.Bold)
 
         grid = QtWidgets.QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setColumnStretch(1, 5)
+        TOP_LEFT = Qt.AlignLeft | Qt.AlignTop
 
-        
-        grid.addLayout(generation_hbox, 0, 0, Qt.AlignLeft | Qt.AlignTop)
-        grid.addLayout(ga_setting, 0, 1, Qt.AlignLeft | Qt.AlignTop)
-        grid.addLayout(selection_type_hbox, 1, 1, Qt.AlignLeft | Qt.AlignTop)
-        grid.addLayout(crossover_type_hbox, 2, 1, Qt.AlignLeft | Qt.AlignTop)
-        grid.addLayout(num_elitism_hbox, 3, 1, Qt.AlignLeft | Qt.AlignTop)
-        # grid.addLayout(vbox2, 0, 1)
-        
+        #### Generation stuff ####
+        # Generation
+        self._create_label_widget_in_grid('Generation:', font_bold, grid, 0, 0, TOP_LEFT)
+        self.current_generation_label = self._create_label_widget('1', font)
+        grid.addWidget(self.current_generation_label, 0, 1, TOP_LEFT)
+        # Current individual
+        self._create_label_widget_in_grid('Individual:', font_bold, grid, 1, 0, TOP_LEFT)
+        self.current_individual_label = self._create_label_widget('1/{}'.format(settings['population_size']), font)
+        grid.addWidget(self.current_individual_label, 1, 1, TOP_LEFT)
+        # Best score
+        self._create_label_widget_in_grid('Best Score:', font_bold, grid, 2, 0, TOP_LEFT)
+        self.best_score_label = self._create_label_widget('0', font)
+        grid.addWidget(self.best_score_label, 2, 1, TOP_LEFT)
+        # Best fitness
+        self._create_label_widget_in_grid('Best Fitness:', font_bold, grid, 3, 0, TOP_LEFT)
+        self.best_fitness_label = self._create_label_widget('0', font)
+        grid.addWidget(self.best_fitness_label, 3, 1, TOP_LEFT)
 
-        
+        #### GA setting ####
+        self._create_label_widget_in_grid('GA Settings', font_bold, grid, 0, 2, TOP_LEFT)
+        # Selection type
+        selection_type = ' '.join([word.lower().capitalize() for word in settings['selection_type'].split('_')])
+        self._create_label_widget_in_grid('Selection Type:', font_bold, grid, 1, 2, TOP_LEFT)
+        self._create_label_widget_in_grid(selection_type, font, grid, 1, 3, TOP_LEFT)
+        # Crossover type
+        crossover_type = settings['crossover_type']
+        self._create_label_widget_in_grid('Crossover Type:', font_bold, grid, 2, 2, TOP_LEFT)
+        self._create_label_widget_in_grid(crossover_type, font, grid, 2, 3, TOP_LEFT)
+        # Elitism
+        num_elitsm = str(settings['num_elitism'])
+        self._create_label_widget_in_grid('Number of Elitism:', font_bold, grid, 3, 2, TOP_LEFT)
+        self._create_label_widget_in_grid(num_elitsm, font, grid, 3, 3, TOP_LEFT)
+        # Mutation type
+        mutation_type = settings['mutation_type'].lower().capitalize()
+        self._create_label_widget_in_grid('Mutation Type:', font_bold, grid, 4, 2, TOP_LEFT)
+        self._create_label_widget_in_grid(mutation_type, font, grid, 4, 3, TOP_LEFT)
+        # Mutation rate
+        self._create_label_widget_in_grid('Mutation Rate:', font_bold, grid, 5, 2, TOP_LEFT)
+        mutation_rate_percent = '{:.2f}%'.format(settings['mutation_rate'])
+        mutation_rate_type = settings['mutation_rate_type'].lower().capitalize()
+        mutation_rate = mutation_rate_percent + ' + ' + mutation_rate_type
+        self._create_label_widget_in_grid(mutation_rate, font, grid, 5, 3, TOP_LEFT)
+
+        #### NN setting ####
+        self._create_label_widget_in_grid('NN Settings', font_bold, grid, 0, 4, TOP_LEFT)
+        # Hidden layer activation
+        hidden_layer_activation = ' '.join([word.lower().capitalize() for word in settings['hidden_layer_activation'].split('_')])
+        self._create_label_widget_in_grid('Hidden Activation:', font_bold, grid, 1, 4, TOP_LEFT)
+        self._create_label_widget_in_grid(hidden_layer_activation, font, grid, 1, 5, TOP_LEFT)
+        # Output layer activation
+        output_layer_activation = ' '.join([word.lower().capitalize() for word in settings['output_layer_activation'].split('_')])
+        self._create_label_widget_in_grid('Output Activation:', font_bold, grid, 2, 4, TOP_LEFT)
+        self._create_label_widget_in_grid(output_layer_activation, font, grid, 2, 5, TOP_LEFT)
+        # Network architecture
+        network_architecture = '[{}, {}, 4]'.format(settings['vision_type'] * 3 + 4 + 4,
+                                                    [str(num_neurons) for num_neurons in settings['hidden_network_architecture']])
+        self._create_label_widget_in_grid('NN Architecture:', font_bold, grid, 3, 4, TOP_LEFT)
+        self._create_label_widget_in_grid(network_architecture, font, grid, 3, 5, TOP_LEFT)
+        # Snake vision
+        snake_vision = str(settings['vision_type']) + ' directions'
+        self._create_label_widget_in_grid('Snake Vision:', font_bold, grid, 4, 4, TOP_LEFT)
+        self._create_label_widget_in_grid(snake_vision, font, grid, 4, 5, TOP_LEFT)
 
         self.setLayout(grid)
         
         self.show()
 
-    def _create_hbox_setting(self, setting_name: str, setting_value: str, font: QtGui.QFont) -> QtWidgets.QHBoxLayout:
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.setSpacing(10)
-        hbox.setContentsMargins(0, 0, 0, 0)
-        # Setting name label
-        setting_name_lbl = QtWidgets.QLabel()
-        setting_name_lbl.setText(setting_name)
-        setting_name_lbl.setFont(font)
-        # Setting value label
-        setting_value_lbl = QtWidgets.QLabel()
-        setting_value_lbl.setText(setting_value)
-        setting_value_lbl.setFont(font)
-        # Add it to the box
-        hbox.addWidget(setting_name_lbl, 0, Qt.AlignLeft | Qt.AlignTop)
-        # hbox.addSpacing(10)
-        hbox.addWidget(setting_value_lbl, 1, Qt.AlignLeft | Qt.AlignTop)
+    def _create_label_widget(self, string_label: str, font: QtGui.QFont) -> QtWidgets.QLabel:
+        label = QtWidgets.QLabel()
+        label.setText(string_label)
+        label.setFont(font)
+        return label
 
-        return hbox
+    def _create_label_widget_in_grid(self, string_label: str, font: QtGui.QFont, 
+                                     grid: QtWidgets.QGridLayout, row: int, col: int, 
+                                     alignment: Qt.Alignment) -> None:
+        label = QtWidgets.QLabel()
+        label.setText(string_label)
+        label.setFont(font)
+        grid.addWidget(label, row, col, alignment)
+
 
 class SnakeWidget(QtWidgets.QWidget):
     def __init__(self, parent, board_size=(50, 50), snake=None):
@@ -157,9 +198,8 @@ class SnakeWidget(QtWidgets.QWidget):
             self.snake.update()
             self.repaint()
         else:
-            print('dead')
-            import sys
-            sys.exit(-1)
+            # dead
+            pass
 
     def draw_border(self, painter: QtGui.QPainter) -> None:
         painter.setRenderHints(QtGui.QPainter.Antialiasing)

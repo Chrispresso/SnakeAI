@@ -6,6 +6,9 @@ from collections import deque
 import sys
 from misc import *
 
+from genetic_algorithm.individual import Individual
+from neural_network import FeedForwardNetwork, linear, sigmoid, tanh, relu
+
 
 
 class Vision(object):
@@ -31,7 +34,7 @@ class DrawableVision(object):
         self.self_location = self_location
 
 
-class Snake(object):
+class Snake(Individual):
     def __init__(self, board_size: Tuple[int, int],
                  start_pos: Optional[Point] = None,
                  seed: Optional[int] = None,
@@ -40,6 +43,8 @@ class Snake(object):
                  hidden_layer_architecture: Optional[List[int]] = [12, 9]
                  ):
 
+        self._chromosome = {}
+
         self._direction_to_angle = {
             'r': 0.0,
             'u': 90.0,
@@ -47,7 +52,10 @@ class Snake(object):
             'd': 270.0
         }
     
-        self.score = 0
+        self.score = 0  # Number of apples snake gets
+        self._fitness = 0  # Overall fitness
+        self._frames = 0  # Number of frames that the snake has been alive
+        self._frames_since_last_apple = 0
         self.possible_directions = ('u', 'd', 'l', 'r')
 
         self.board_size = board_size
@@ -72,6 +80,7 @@ class Snake(object):
         self.network_architecture = [num_inputs]                     # Inputs
         self.network_architecture.extend(hidden_layer_architecture)  # Hidden layers
         self.network_architecture.append(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
+        self.network = FeedForwardNetwork(self.network_architecture, linear, linear)
 
 
         # For creating the next apple
@@ -85,6 +94,36 @@ class Snake(object):
         self.init_snake(starting_direction)
         self.init_velocity(starting_direction, initial_velocity)
         self.generate_apple()
+
+    @property
+    def fitness(self):
+        return self._fitness
+    
+    def calculate_fitness(self):
+        # Give positive minimum fitness for roulette wheel selection
+        self._fitness = max((100*self.score - .5*self._frames), 10.0)
+
+    @property
+    def chromosome(self):
+        return self._chromosome
+
+    def encode_chromosome(self):
+        L = len(self.network.params) // 2
+        # Encode weights and bias
+        for layer in range(1, L):
+            l = str(layer)
+            self._chromosome['W' + l] = self.network.params['W' + l].flatten()
+            self._chromosome['b' + l] = self.network.params['b' + l].flatten()
+
+    def decode_chromosome(self):
+        L = len(self.network.params) // 2
+        # Decode weights and bias
+        for layer in range(1, L):
+            l = str(layer)
+            w_shape = (self.network_architecture[layer], self.network_architecture[layer-1])
+            b_shape = (self.network_architecture[layer], 1)
+            self.network.params['W' + l] = self._chromosome['W' + l].reshape(w_shape)
+            self.network.params['b' + l] = self._chromosome['b' + l].reshape(b_shape)
 
     def look(self):
         # Look all around
@@ -229,10 +268,11 @@ class Snake(object):
         self.is_alive = True
 
     def update(self):
-        # if self.move():
         if self.is_alive:
-            # self.move()
+            self._frames += 1
             self.look()
+            self.network.feed_forward(self.vision_as_array)
+            self.direction = self.possible_directions[np.argmax(self.network.out)]
             return True
         else:
             return False
@@ -265,6 +305,8 @@ class Snake(object):
             # If we just consumed the apple, generate a new one.
             # No need to pop the tail of the snake since the snake is growing here
             if next_pos == self.apple_location:
+                self.score += 1
+                self._frames_since_last_apple = 0
                 self.generate_apple()
             else:
                 tail = self.snake_array.pop()
@@ -282,6 +324,12 @@ class Snake(object):
                 self.tail_direction = 'd'
             elif diff.y < 0:
                 self.tail_direction = 'u'
+
+            self._frames_since_last_apple += 1
+            #@TODO: MAybe make max number of a variable
+            if self._frames_since_last_apple > 150:
+                self.is_alive = False
+                return False
 
             return True
         else:
