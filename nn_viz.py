@@ -42,10 +42,9 @@ class NeuralNetworkViz(QtWidgets.QWidget):
 
         default_offset = 30
         h_offset = default_offset
-        # inputs = np.array([[1], [0], [3]])
         inputs = self.snake.vision_as_array
-        # out = self.snake.network.feed_forward(inputs)  # @TODO: shouldnt need this
-        max_out = np.argmax(self.snake.network.out)
+        out = self.snake.network.feed_forward(inputs)  # @TODO: shouldnt need this
+        max_out = np.argmax(out)
         
         # Draw nodes
         for layer, num_nodes in enumerate(layer_nodes):
@@ -71,7 +70,12 @@ class NeuralNetworkViz(QtWidgets.QWidget):
                         painter.setBrush(QtGui.QBrush(Qt.white))
                 # Hidden layers
                 elif layer > 0 and layer < len(layer_nodes) - 1:
-                    saturation = max(min(activations[node, 0], 1.0), 0.0)
+                    try:
+                        saturation = max(min(activations[node, 0], 1.0), 0.0)
+                    except:
+                        print(self.snake.network.params)
+                        import sys
+                        sys.exit(-1)
                     painter.setBrush(QtGui.QBrush(QtGui.QColor.fromHslF(125/239, saturation, 120/240)))
                 # Output layer
                 elif layer == len(layer_nodes) - 1:

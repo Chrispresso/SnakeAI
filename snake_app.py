@@ -8,37 +8,46 @@ from nn_viz import NeuralNetworkViz
 from neural_network import FeedForwardNetwork, sigmoid, linear, relu
 from settings import settings
 from genetic_algorithm.population import Population
+from genetic_algorithm.selection import elitism_selection, roulette_wheel_selection, tournament_selection
+from genetic_algorithm.mutation import gaussian_mutation
+from genetic_algorithm.crossover import simulated_binary_crossover as SBX
+from math import sqrt
 
 
-
-SQUARE_SIZE = (16, 16)
+SQUARE_SIZE = (12, 12)
 
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, board_size=(50, 50)):
+    def __init__(self, settings, board_size=(50, 50)):
         super().__init__()
+        self.settings = settings
         self.board_size = board_size
         self.border = (10, 10, 10, 10)  # Left, Top, Right, Bottom
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
-        self.snake_widget_height = max(SQUARE_SIZE[1] * self.board_size[1], 800)
+        self.snake_widget_height = SQUARE_SIZE[1] * self.board_size[1]
 
         self.top = 150
         self.left = 150
-        self.width = self.snake_widget_width + 600 + self.border[0] + self.border[2]
+        self.width = self.snake_widget_width + 700 + self.border[0] + self.border[2]
         self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
         
-        individuals = [Snake(board_size) for _ in range(20)]
+        individuals = [Snake(board_size, apple_seed=0, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'])]
+        self.best_fitness = 10
+        self.best_score = 0
         self.population = Population(individuals)
+        for individual in self.population.individuals:
+            individual.encode_chromosome()
 
-        self._i = 0
-        self.snake = self.population.individuals[self._i]
+        self._current_individual = 0
+        self.snake = self.population.individuals[self._current_individual]
+        self.current_generation = 0
 
         self.init_window()
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
-        self.timer.start(1000./20)
+        self.timer.start(1000./120)
 
         self.show()
         self.update()
@@ -61,7 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Genetic Algorithm Stats window
         self.ga_window = GeneticAlgoWidget(self.centralWidget, settings)
-        self.ga_window.setGeometry(QtCore.QRect(600, self.border[1] + self.border[3] + self.snake_widget_height, self.snake_widget_width + self.border[0] + self.border[2], 200))
+        self.ga_window.setGeometry(QtCore.QRect(600, self.border[1] + self.border[3] + self.snake_widget_height, self.snake_widget_width + self.border[0] + self.border[2] + 50, 200))
         self.ga_window.setObjectName('ga_window')
 
 
@@ -70,30 +79,120 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nn_viz_window.update()
         if self.snake.is_alive:
             self.snake.move()
+            if self.snake.score > self.best_score:
+                self.best_score = self.snake.score
+                self.ga_window.best_score_label.setText(str(self.snake.score))
         else:
-            self.population.individuals[self._i].calculate_fitness()
-            print('Fitness {}: {}'.format(self._i, self.population.individuals[self._i].fitness))
+            # print('Fitness {}: {}'.format(self._current_individual, self.population.individuals[self._current_individual].fitness))
             # Next individual in population
-            self._i += 1
+            self._current_individual += 1
             
-            if self._i == 20:
-                import sys
-                sys.exit(-1)
-            self.snake = self.population.individuals[self._i]
+            # Next generation
+            if self._current_individual == 20:
+                for individual in self.population.individuals:
+                    individual.calculate_fitness()
+                    print(individual.fitness)
+
+                self.next_generation()
+
+            else:
+                self.population.individuals[self._current_individual].calculate_fitness()
+                fitness = self.population.individuals[self._current_individual].fitness
+                print(fitness)
+                if fitness > self.best_fitness:
+                    self.best_fitness = best_fitness
+                    best_fitness = fitness
+                    self.ga_window.best_fitness_label.setText(str(fitness))
+                self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, settings['population_size']))
+
+            self.snake = self.population.individuals[self._current_individual]
             self.snake_widget_window.snake = self.snake
             self.nn_viz_window.snake = self.snake
+
+    def next_generation(self):
+        self._increment_generation()
+        self._current_individual = 0
+
+        next_pop: List[Snake] = []
+
+        # Decode chromosome and calculate fitness
+        for individual in self.population.individuals:
+            individual.decode_chromosome()
+            individual.calculate_fitness()
+        
+        # Get best individuals from current population
+        best_from_pop = elitism_selection(self.population, self.settings['num_elitism'])
+        elite = []
+        for best in best_from_pop:
+            chromosome = best.chromosome
+            copy = Snake(best.board_size, apple_seed=0, chromosome=chromosome, hidden_layer_architecture=best.hidden_layer_architecture)
+            copy.decode_chromosome()
+            elite.append(copy)
+        next_pop.extend(elite)
+
+        while len(next_pop) < self.settings['population_size']:
+            p1, p2 = tournament_selection(self.population, 2, 4)
+            mutation_rate = 0.05 / sqrt(self.current_generation + 1)
+
+            L = len(p1.network.params) // 2
+            c1_chromosome = {}
+            c2_chromosome = {}
+
+            # Each W_l and b_l are treated as their own chromosome.
+            # Because of this I need to perform crossover/mutation on each chromosome between parents
+            for l in range(1, L):
+                # W_l crossover
+                p1_W_l = p1.chromosome['W' + str(l)]
+                p2_W_l = p2.chromosome['W' + str(l)]
+                c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 1)
+                c1_chromosome['W' + str(l)] = c1_W_l
+                c2_chromosome['W' + str(l)] = c2_W_l
+
+                # b_l crossover
+                p1_b_l = p1.chromosome['b' + str(l)]
+                p2_b_l = p2.chromosome['b' + str(l)]
+                c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 1)
+                c1_chromosome['b' + str(l)] = c1_b_l
+                c2_chromosome['b' + str(l)] = c2_b_l
+
+                # Mutate child weights
+                gaussian_mutation(c1_chromosome['W' + str(l)], mutation_rate)
+                gaussian_mutation(c2_chromosome['W' + str(l)], mutation_rate)
+
+                # Mutate child bias
+                gaussian_mutation(c1_chromosome['b' + str(l)], mutation_rate)
+                gaussian_mutation(c2_chromosome['b' + str(l)], mutation_rate)
+
+            # Create children from chromosomes generated above
+            c1 = Snake(p1.board_size, chromosome=c1_chromosome, apple_seed=0, hidden_layer_architecture=p1.hidden_layer_architecture)
+            c2 = Snake(p2.board_size, chromosome=c2_chromosome, apple_seed=0, hidden_layer_architecture=p2.hidden_layer_architecture)
+
+            # Decode the chromosomes to get the network weights and bias filled out
+            # @TODO: might just be able to do this in teh update
+            c1.decode_chromosome()
+            c2.decode_chromosome()
+
+            next_pop.extend([c1, c2])
+        
+        # Set the next generation
+        self.population.individuals = next_pop
+
+
+    def _increment_generation(self):
+        self.current_generation += 1
+        self.ga_window.current_generation_label.setText(str(self.current_generation + 1))
 
 
 class GeneticAlgoWidget(QtWidgets.QWidget):
     def __init__(self, parent, settings):
         super().__init__(parent)
-        font = QtGui.QFont('Times', 13, QtGui.QFont.Normal)
+        font = QtGui.QFont('Times', 10, QtGui.QFont.Normal)
         font_bold = QtGui.QFont('Times', 13, QtGui.QFont.Bold)
 
         grid = QtWidgets.QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setColumnStretch(1, 5)
-        TOP_LEFT = Qt.AlignLeft | Qt.AlignTop
+        TOP_LEFT = Qt.AlignLeft | Qt.AlignVCenter
 
         #### Generation stuff ####
         # Generation
@@ -110,7 +209,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         grid.addWidget(self.best_score_label, 2, 1, TOP_LEFT)
         # Best fitness
         self._create_label_widget_in_grid('Best Fitness:', font_bold, grid, 3, 0, TOP_LEFT)
-        self.best_fitness_label = self._create_label_widget('0', font)
+        self.best_fitness_label = self._create_label_widget('10', font)
         grid.addWidget(self.best_fitness_label, 3, 1, TOP_LEFT)
 
         #### GA setting ####
@@ -133,7 +232,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         self._create_label_widget_in_grid(mutation_type, font, grid, 4, 3, TOP_LEFT)
         # Mutation rate
         self._create_label_widget_in_grid('Mutation Rate:', font_bold, grid, 5, 2, TOP_LEFT)
-        mutation_rate_percent = '{:.2f}%'.format(settings['mutation_rate'])
+        mutation_rate_percent = '{:.2f}%'.format(settings['mutation_rate'] * 100)
         mutation_rate_type = settings['mutation_rate_type'].lower().capitalize()
         mutation_rate = mutation_rate_percent + ' + ' + mutation_rate_type
         self._create_label_widget_in_grid(mutation_rate, font, grid, 5, 3, TOP_LEFT)
@@ -150,7 +249,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         self._create_label_widget_in_grid(output_layer_activation, font, grid, 2, 5, TOP_LEFT)
         # Network architecture
         network_architecture = '[{}, {}, 4]'.format(settings['vision_type'] * 3 + 4 + 4,
-                                                    [str(num_neurons) for num_neurons in settings['hidden_network_architecture']])
+                                                    ', '.join([str(num_neurons) for num_neurons in settings['hidden_network_architecture']]))
         self._create_label_widget_in_grid('NN Architecture:', font_bold, grid, 3, 4, TOP_LEFT)
         self._create_label_widget_in_grid(network_architecture, font, grid, 3, 5, TOP_LEFT)
         # Snake vision
@@ -182,7 +281,7 @@ class SnakeWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.board_size = board_size
         # self.setFixedSize(SQUARE_SIZE[0] * self.board_size[0], SQUARE_SIZE[1] * self.board_size[1])
-        self.new_game()
+        # self.new_game()
         if snake:
             self.snake = snake
         self.setFocus()
@@ -191,7 +290,7 @@ class SnakeWidget(QtWidgets.QWidget):
         self.show()
 
     def new_game(self) -> None:
-        self.snake = Snake(self.board_size, seed=0)
+        self.snake = Snake(self.board_size)
     
     def update(self):
         if self.snake.is_alive:
@@ -288,5 +387,5 @@ class SnakeWidget(QtWidgets.QWidget):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow(settings)
     sys.exit(app.exec_())

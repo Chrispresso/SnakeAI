@@ -8,7 +8,7 @@ from typing import List, Union
 from .individual import Individual
 
 
-def gaussian_mutation(individual: Individual, prob_mutation: float, 
+def gaussian_mutation(chromosome: np.ndarray, prob_mutation: float, 
                       mu: List[float] = None, sigma: List[float] = None) -> None:
     """
     Perform a gaussian mutation for each gene in an individual with probability, prob_mutation.
@@ -16,7 +16,6 @@ def gaussian_mutation(individual: Individual, prob_mutation: float,
     If mu and sigma are defined then the gaussian distribution will be drawn from that,
     otherwise it will be drawn from N(0, 1) for the shape of the individual.
     """
-    chromosome = individual.chromosome
     # Determine which genes will be mutated
     mutation_array = np.random.random(chromosome.shape) < prob_mutation
     # If mu and sigma are defined, create gaussian distribution around each one

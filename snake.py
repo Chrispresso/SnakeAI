@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple, Optional, Union, Set
+from typing import Tuple, Optional, Union, Set, Dict
 from fractions import Fraction
 import random
 from collections import deque
@@ -36,14 +36,13 @@ class DrawableVision(object):
 
 class Snake(Individual):
     def __init__(self, board_size: Tuple[int, int],
+                 chromosome: Optional[Dict[str, List[np.ndarray]]] = None,
                  start_pos: Optional[Point] = None,
-                 seed: Optional[int] = None,
+                 apple_seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
                  starting_direction: Optional[str] = None,
                  hidden_layer_architecture: Optional[List[int]] = [12, 9]
                  ):
-
-        self._chromosome = {}
 
         self._direction_to_angle = {
             'r': 0.0,
@@ -59,6 +58,7 @@ class Snake(Individual):
         self.possible_directions = ('u', 'd', 'l', 'r')
 
         self.board_size = board_size
+        self.hidden_layer_architecture = hidden_layer_architecture
 
         if not start_pos:
             x = random.randint(10, self.board_size[0] - 9)
@@ -80,11 +80,19 @@ class Snake(Individual):
         self.network_architecture = [num_inputs]                     # Inputs
         self.network_architecture.extend(hidden_layer_architecture)  # Hidden layers
         self.network_architecture.append(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
-        self.network = FeedForwardNetwork(self.network_architecture, linear, linear)
+        self.network = FeedForwardNetwork(self.network_architecture, sigmoid, sigmoid)
+
+        # If chromosome is set, take it
+        if chromosome:
+            self._chromosome = chromosome
+            self.decode_chromosome()
+        else:
+            self._chromosome = {}
+            self.encode_chromosome()
 
 
         # For creating the next apple
-        self.rand_apple = random.Random(seed)
+        self.rand_apple = random.Random(apple_seed)
 
         self.apple_location = None
         if starting_direction:

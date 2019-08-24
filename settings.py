@@ -1,7 +1,7 @@
 settings = {
     'hidden_layer_activation':     'relu',     # Options are [relu, sigmoid, tanh, linear, leaky_relu]
     'output_layer_activation':     'sigmoid',  # Options are [relu, sigmoid, tanh, linear, leaky_relu]
-    'hidden_network_architecture': [9, 9],     # A list containing number of nodes in each hidden layer
+    'hidden_network_architecture': [12, 9],     # A list containing number of nodes in each hidden layer
     'vision_type':                 8,          # Number of directions the snake can see in
 
     #### GA stuff ####
@@ -18,7 +18,7 @@ settings = {
     'population_size':             20,
     # Number of top performing individuals to copy over from previous generation
     # Should be a small number
-    'num_elitism':                 1,
+    'num_elitism':                 2,
     ## Crossover ##
     # The type of crossover to perform
     'crossover_type':              'SBX',       # Options are [SBX]
