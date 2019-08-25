@@ -47,9 +47,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
-        self.timer.start(1000./120)
+        # self.timer.setInterval(10)
+        self.timer.start(1000./500)
 
-        self.show()
+        # self.show()
         self.update()
 
     def init_window(self):
@@ -83,26 +84,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.best_score = self.snake.score
                 self.ga_window.best_score_label.setText(str(self.snake.score))
         else:
-            # print('Fitness {}: {}'.format(self._current_individual, self.population.individuals[self._current_individual].fitness))
-            # Next individual in population
+            # Calculate fitness
+            self.population.individuals[self._current_individual].calculate_fitness()
+            fitness = self.population.individuals[self._current_individual].fitness
+            print(self._current_individual, fitness)
+            if fitness > self.best_fitness:
+                self.best_fitness = fitness
+                self.ga_window.best_fitness_label.setText(str(fitness))
+
             self._current_individual += 1
             
             # Next generation
-            if self._current_individual == 20:
-                for individual in self.population.individuals:
-                    individual.calculate_fitness()
-                    print(individual.fitness)
-
+            if self._current_individual == settings['population_size']:
                 self.next_generation()
 
             else:
-                self.population.individuals[self._current_individual].calculate_fitness()
-                fitness = self.population.individuals[self._current_individual].fitness
-                print(fitness)
-                if fitness > self.best_fitness:
-                    self.best_fitness = best_fitness
-                    best_fitness = fitness
-                    self.ga_window.best_fitness_label.setText(str(fitness))
+                
                 self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, settings['population_size']))
 
             self.snake = self.population.individuals[self._current_individual]
@@ -131,8 +128,9 @@ class MainWindow(QtWidgets.QMainWindow):
         next_pop.extend(elite)
 
         while len(next_pop) < self.settings['population_size']:
-            p1, p2 = tournament_selection(self.population, 2, 4)
-            mutation_rate = 0.05 / sqrt(self.current_generation + 1)
+            # p1, p2 = tournament_selection(self.population, 2, 4)
+            p1, p2 = roulette_wheel_selection(self.population, 2)
+            mutation_rate = 0.05
 
             L = len(p1.network.params) // 2
             c1_chromosome = {}

@@ -15,7 +15,7 @@ settings = {
     'mutation_type':               'gaussian',  # Options are [gaussian]
     ## Population ##
     # Number of individuals in the population
-    'population_size':             20,
+    'population_size':             60,
     # Number of top performing individuals to copy over from previous generation
     # Should be a small number
     'num_elitism':                 2,

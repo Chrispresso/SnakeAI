@@ -37,10 +37,10 @@ class DrawableVision(object):
 class Snake(Individual):
     def __init__(self, board_size: Tuple[int, int],
                  chromosome: Optional[Dict[str, List[np.ndarray]]] = None,
-                 start_pos: Optional[Point] = None,
+                 start_pos: Optional[Point] = Point(5, 10),  # @TODO: None/Point(10,10),31,10
                  apple_seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
-                 starting_direction: Optional[str] = None,
+                 starting_direction: Optional[str] = None,  # @TODO: 'd'/None
                  hidden_layer_architecture: Optional[List[int]] = [12, 9]
                  ):
 
@@ -80,7 +80,7 @@ class Snake(Individual):
         self.network_architecture = [num_inputs]                     # Inputs
         self.network_architecture.extend(hidden_layer_architecture)  # Hidden layers
         self.network_architecture.append(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
-        self.network = FeedForwardNetwork(self.network_architecture, sigmoid, sigmoid)
+        self.network = FeedForwardNetwork(self.network_architecture, relu, sigmoid)
 
         # If chromosome is set, take it
         if chromosome:
@@ -109,7 +109,7 @@ class Snake(Individual):
     
     def calculate_fitness(self):
         # Give positive minimum fitness for roulette wheel selection
-        self._fitness = max((100*self.score - .5*self._frames), 10.0)
+        self._fitness = 200*self.score + .25*self._frames
 
     @property
     def chromosome(self):
