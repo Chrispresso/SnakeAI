@@ -37,7 +37,7 @@ class DrawableVision(object):
 class Snake(Individual):
     def __init__(self, board_size: Tuple[int, int],
                  chromosome: Optional[Dict[str, List[np.ndarray]]] = None,
-                 start_pos: Optional[Point] = Point(5, 10),  # @TODO: None/Point(10,10),31,10
+                 start_pos: Optional[Point] = None,  # @TODO: None/Point(10,10),31,10
                  apple_seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
                  starting_direction: Optional[str] = None,  # @TODO: 'd'/None
@@ -192,8 +192,10 @@ class Snake(Individual):
         #            total_distance += 1   or
         #            normalize with distance as numerator
         dist_to_wall = 1.0 / total_distance
-        dist_to_apple = 1.0 / dist_to_apple
-        dist_to_self = 1.0 / dist_to_self
+        # dist_to_apple = 1.0 / dist_to_apple
+        dist_to_apple = 1.0 if dist_to_apple != np.inf else 0.0
+        # dist_to_self = 1.0 / dist_to_self
+        dist_to_self = 1.0 if dist_to_self != np.inf else 0.0
         # if dist_to_apple == np.inf:
         #     dist_to_apple = 0.0
         # else:

@@ -96,8 +96,10 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # Next generation
             if self._current_individual == settings['population_size']:
+                print('----Max fitness:', self.population.fittest_individual.fitness)
+                print('----Average fitness:', self.population.average_fitness)
                 self.next_generation()
-
+                print('======================= Gneration {} ======================='.format(self.current_generation))
             else:
                 
                 self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, settings['population_size']))
