@@ -23,7 +23,7 @@ def roulette_wheel_selection(population: Population, num_individuals: int) -> Li
 
     return selection
 
-def tournament_selection(population: Population, num_individuals, tournament_size: int) -> List[Individual]:
+def tournament_selection(population: Population, num_individuals: int, tournament_size: int) -> List[Individual]:
     selection = []
     for _ in range(num_individuals):
         tournament = np.random.choice(population.individuals, tournament_size)

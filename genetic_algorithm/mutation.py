@@ -27,8 +27,10 @@ def gaussian_mutation(chromosome: np.ndarray, prob_mutation: float,
     # Update
     chromosome[mutation_array] += gaussian_mutation[mutation_array]
 
-def random_uniform_mutation(individual: Individual, prob_mutation: float,
-                            low: List[float], high: List[float]) -> None:
+def random_uniform_mutation(chromosome: np.ndarray, prob_mutation: float,
+                            low: Union[List[float], float],
+                            high: Union[List[float], float]
+                            ) -> None:
     """
     Randomly mutate each gene in an individual with probability, prob_mutation.
     If a gene is selected for mutation it will be assigned a value with uniform probability
@@ -37,29 +39,29 @@ def random_uniform_mutation(individual: Individual, prob_mutation: float,
     @Note [low, high) is defined for each gene to help get the full range of possible values
     @TODO: Eq 11.4
     """
-    chromosome = individual.chromosome
+    assert type(low) == type(high), 'low and high must have the same type'
     mutation_array = np.random.random(chromosome.shape) < prob_mutation
-    uniform_mutation = np.random.uniform(low, high)
+    if isinstance(low, list):
+        uniform_mutation = np.random.uniform(low, high)
+    else:
+        uniform_mutation = np.random.uniform(low, high, size=chromosome.shape)
     chromosome[mutation_array] = uniform_mutation[mutation_array]
 
-def uniform_mutation_with_respect_to_best_individual(individual: Individual, best_individual: Individual, prob_mutation: float) -> None:
+def uniform_mutation_with_respect_to_best_individual(chromosome: np.ndarray, best_chromosome: np.ndarray, prob_mutation: float) -> None:
     """
     Ranomly mutate each gene in an individual with probability, prob_mutation.
     If a gene is selected for mutation it will nudged towards the gene from the best individual.
 
     @TODO: Eq 11.6
     """
-    chromosome = individual.chromosome
-    best_chromosome = best_individual.chromosome
     mutation_array = np.random.random(chromosome.shape) < prob_mutation
-    uniform_mutation = np.random.uniform()
+    uniform_mutation = np.random.uniform(size=chromosome.shape)
     chromosome[mutation_array] += uniform_mutation[mutation_array] * (best_chromosome[mutation_array] - chromosome[mutation_array])
 
 def cauchy_mutation(individual: np.ndarray, scale: float) -> np.ndarray:
     pass
 
-def exponential_mutation(individual: Individual, xi: Union[float, np.ndarray], prob_mutation: float) -> None:
-    chromosome = individual.chromosome
+def exponential_mutation(chromosome: np.ndarray, xi: Union[float, np.ndarray], prob_mutation: float) -> None:
     mutation_array = np.random.random(chromosome.shape) < prob_mutation
     # Fill xi if necessary
     if not isinstance(xi, np.ndarray):
@@ -87,8 +89,7 @@ def exponential_mutation(individual: Individual, xi: Union[float, np.ndarray], p
     # Update individual
     chromosome[mutation_array] += delta[mutation_array]
 
-def mmo_mutation(individual: Individual, prob_mutation: float) -> None:
-    chromosome = individual.chromosome
+def mmo_mutation(chromosome: np.ndarray, prob_mutation: float) -> None:
     mutation_array = np.random.random(chromosome.shape) < prob_mutation
     normal = np.random.normal(size=chromosome.shape)  # Eq 11.21
     cauchy = stats.cauchy.rvs(size=chromosome.shape)  # Eq 11.22
