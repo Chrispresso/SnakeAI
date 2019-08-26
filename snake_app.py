@@ -134,7 +134,8 @@ class MainWindow(QtWidgets.QMainWindow):
             p1, p2 = roulette_wheel_selection(self.population, 2)
             mutation_rate = 0.05
 
-            L = len(p1.network.params) // 2
+            # L = len(p1.network.params) // 2
+            L = len(p1.network.layer_nodes) - 1
             c1_chromosome = {}
             c2_chromosome = {}
 

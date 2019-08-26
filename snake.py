@@ -77,9 +77,9 @@ class Snake(Individual):
         # each of which have 4 possibilities.
         num_inputs = len(self._vision_type) * 3 + 4 + 4
         self.vision_as_array: np.ndarray = np.zeros((num_inputs, 1))
-        self.network_architecture = [num_inputs]                     # Inputs
-        self.network_architecture.extend(hidden_layer_architecture)  # Hidden layers
-        self.network_architecture.append(4)                          # 4 outputs, ['u', 'd', 'l', 'r']
+        self.network_architecture = [num_inputs]                          # Inputs
+        self.network_architecture.extend(self.hidden_layer_architecture)  # Hidden layers
+        self.network_architecture.append(4)                               # 4 outputs, ['u', 'd', 'l', 'r']
         self.network = FeedForwardNetwork(self.network_architecture, relu, sigmoid)
 
         # If chromosome is set, take it
@@ -116,7 +116,8 @@ class Snake(Individual):
         return self._chromosome
 
     def encode_chromosome(self):
-        L = len(self.network.params) // 2
+        # L = len(self.network.params) // 2
+        L = len(self.network.layer_nodes) - 1
         # Encode weights and bias
         for layer in range(1, L):
             l = str(layer)
@@ -124,7 +125,8 @@ class Snake(Individual):
             self._chromosome['b' + l] = self.network.params['b' + l].flatten()
 
     def decode_chromosome(self):
-        L = len(self.network.params) // 2
+        # L = len(self.network.params) // 2
+        L = len(self.network.layer_nodes) - 1
         # Decode weights and bias
         for layer in range(1, L):
             l = str(layer)
