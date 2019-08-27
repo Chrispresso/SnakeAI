@@ -1,4 +1,6 @@
 settings = {
+    'board_size':                  (50, 50),
+
     'hidden_layer_activation':     'relu',     # Options are [relu, sigmoid, tanh, linear, leaky_relu]
     'output_layer_activation':     'sigmoid',  # Options are [relu, sigmoid, tanh, linear, leaky_relu]
     'hidden_network_architecture': [20, 12],     # A list containing number of nodes in each hidden layer

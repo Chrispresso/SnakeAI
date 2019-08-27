@@ -1,10 +1,11 @@
 import numpy as np
-from typing import Tuple, Optional, Union, Set, Dict
+from typing import Tuple, Optional, Union, Set, Dict, Any
 from fractions import Fraction
 import random
 from collections import deque
 import sys
 import os
+import json
 
 from misc import *
 from genetic_algorithm.individual import Individual
@@ -42,7 +43,7 @@ class Snake(Individual):
                  apple_seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
                  starting_direction: Optional[str] = None,  # @TODO: 'd'/None
-                 hidden_layer_architecture: Optional[List[int]] = [15, 9]
+                 hidden_layer_architecture: Optional[List[int]] = [1123125, 9]
                  ):
 
         self._direction_to_angle = {
@@ -93,15 +94,19 @@ class Snake(Individual):
 
 
         # For creating the next apple
-        self.rand_apple = random.Random(apple_seed)
+        self.apple_seed = apple_seed  # Only needed for saving/loading replay
+        self.rand_apple = random.Random(self.apple_seed)
 
         self.apple_location = None
         if starting_direction:
             starting_direction = starting_direction[0].lower()
         else:
             starting_direction = self.possible_directions[random.randint(0, 3)]
-        self.init_snake(starting_direction)
-        self.init_velocity(starting_direction, initial_velocity)
+
+        self.starting_direction = starting_direction  # Only needed for saving/loading replay
+        self.init_snake(self.starting_direction)
+        self.initial_velocity = initial_velocity
+        self.init_velocity(self.starting_direction, self.initial_velocity)
         self.generate_apple()
 
     @property
@@ -111,10 +116,12 @@ class Snake(Individual):
     def calculate_fitness(self):
         # Give positive minimum fitness for roulette wheel selection
         # self._fitness = 200*self.score + .25*self._frames
-        if self.score == 0:
-            self._fitness = .25 * self._frames
-        else:
-            self._fitness = .25*self._frames + (50 * 3 ** self.score)
+        # if self.score == 0:
+        #     self._fitness = .25 * self._frames
+        # else:
+        #     self._fitness = .25*self._frames * ((2 ** self.score) + (self.score * 1200)) - (self._frames * 100)
+        self._fitness = (self._frames) + ((2**self.score) + (self.score**2.1)*500) - (((.25 * self._frames)**1.3) * (self.score**1.2))
+        self._fitness = max(self._fitness, 0)
 
     @property
     def chromosome(self):
@@ -390,9 +397,35 @@ class Snake(Individual):
         # Tail starts moving the same direction
         self.tail_direction = self.direction
 
-def save_snake(population_folder: str, individual_name: str, snake: Snake) -> None:
+def save_snake(population_folder: str, individual_name: str, snake: Snake, settings: Dict[str, Any]) -> None:
+    # Make population folder if it doesn't exist
     if not os.path.exists(population_folder):
         os.makedirs(population_folder)
+
+    # Save off settings
+    if 'settings.json' not in os.listdir(population_folder):
+        f = os.path.join(population_folder, 'settings.json')
+        with open(f, 'w', encoding='utf-8') as out:
+            json.dump(settings, out, sort_keys=True, indent=4)
+
+    # Make directory for the individual
+    individual_dir = os.path.join(population_folder, individual_name)
+    os.makedirs(individual_dir)
+
+    # Save some constructor information for replay
+    # @NOTE: No need to save chromosome since that is saved as .npy
+    # @NOTE: No need to save board_size or hidden_layer_architecture
+    #        since these are taken from settings
+    constructor = {}
+    constructor['start_pos'] = snake.start_pos.to_dict()
+    constructor['apple_seed'] = snake.apple_seed
+    constructor['initial_velocity'] = snake.initial_velocity
+    constructor['starting_direction'] = snake.starting_direction
+    snake_constructor_file = os.path.join(individual_dir, 'constructor_params.json')
+    print(constructor)
+    # Save
+    with open(snake_constructor_file, 'w', encoding='utf-8') as out:
+        json.dump(constructor, out, sort_keys=True, indent=4)
 
     L = len(snake.network.layer_nodes)
     for l in range(1, L):
@@ -402,14 +435,18 @@ def save_snake(population_folder: str, individual_name: str, snake: Snake) -> No
         weights = snake.network.params[w_name]
         bias = snake.network.params[b_name]
 
-        # Make directory for the individual
-        individual_dir = os.path.join(population_folder, individual_name)
-        os.makedirs(individual_dir)
+        np.save(os.path.join(individual_dir, w_name), weights)
+        np.save(os.path.join(individual_dir, b_name), bias)
 
-        np.save(w_name, weights)
-        np.save(b_name, bias)
+def load_snake(population_folder: str, individual_name: str, settings: Optional[Dict[str, Any]] = None) -> Snake:
+    if not settings:
+        f = os.path.join(population_folder, 'settings.json')
+        if not os.path.exists(f):
+            raise Exception("settings needs to be passed as an argument if 'settings.json' does not exist under population folder")
+        
+        with open(f, 'r', encoding='utf-8') as fp:
+            settings = json.load(fp)
 
-def load_snake(population_folder: str, individual_name: str) -> Snake:
     params = {}
     for fname in os.listdir(os.path.join(population_folder, individual_name)):
         if individual_name in fname:
@@ -417,11 +454,20 @@ def load_snake(population_folder: str, individual_name: str) -> Snake:
             if len(extension) == 2:
                 param = fname.rsplit('_', 1)[1]
                 param = param[:-len('.npy')]  # Remove extension
-                print(param)
-                params[param] = np.load(os.path.join(path, fname))
+                params[param] = np.load(os.path.join(population_folder, fname))
             else:
                 continue
-    
-    # @TODO: Save off the boardsize as well
-    snake = Snake((50,50), chromosome=params)
+
+
+    # Load constructor params for the specific snake
+    constructor_params = {}
+    snake_constructor_file = os.path.join(population_folder, individual_name, 'constructor_params.json')
+    with open(snake_constructor_file, 'r', encoding='utf-8') as fp:
+        constructor_params = json.load(fp)
+
+    snake = Snake(settings['board_size'], chromosome=params, 
+                  start_pos=Point.from_dict(constructor_params['start_pos']),
+                  apple_seed=constructor_params['apple_seed'],
+                  initial_velocity=constructor_params['initial_velocity'],
+                  starting_direction=constructor_params['starting_direction'])
     return snake

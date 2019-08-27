@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 
 class Slope(object):
@@ -17,6 +17,16 @@ class Point(object):
         x = self.x
         y = self.y
         return Point(x, y)
+
+    def to_dict(self) -> Dict[str, int]:
+        d = {}
+        d['x'] = self.x
+        d['y'] = self.y
+        return d
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, int]) -> 'Point':
+        return Point(d['x'], d['y'])
 
     def __eq__(self, other: Union['Point', Tuple[int, int]]) -> bool:
         if isinstance(other, tuple) and len(other) == 2:

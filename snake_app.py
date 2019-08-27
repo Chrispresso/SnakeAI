@@ -32,7 +32,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.width = self.snake_widget_width + 700 + self.border[0] + self.border[2]
         self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
         
-        individuals = [Snake(board_size, apple_seed=0, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'])]
+        individuals = [Snake(board_size, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'])]
         self.best_fitness = 0
         self.best_score = 0
         self.population = Population(individuals)
@@ -101,7 +101,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 print('----Max fitness:', self.population.fittest_individual.fitness)
                 print('----Best Score:', self.population.fittest_individual.score)
                 print('----Average fitness:', self.population.average_fitness)
-                # save_snake('test_dir', str(self.current_generation), self.population.fittest_individual)
+                save_snake('test_dir', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
                 self.next_generation()
             else:
                 
@@ -127,7 +127,7 @@ class MainWindow(QtWidgets.QMainWindow):
         elite = []
         for best in best_from_pop:
             chromosome = best.chromosome
-            copy = Snake(best.board_size, apple_seed=0, chromosome=chromosome, hidden_layer_architecture=best.hidden_layer_architecture)
+            copy = Snake(best.board_size, chromosome=chromosome, hidden_layer_architecture=best.hidden_layer_architecture)
             copy.decode_chromosome()
             elite.append(copy)
         next_pop.extend(elite)
@@ -159,6 +159,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 c1_chromosome['b' + str(l)] = c1_b_l
                 c2_chromosome['b' + str(l)] = c2_b_l
 
+                scale = .2                
                 # Mutate child weights
                 gaussian_mutation(c1_chromosome['W' + str(l)], mutation_rate)
                 gaussian_mutation(c2_chromosome['W' + str(l)], mutation_rate)
@@ -168,8 +169,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 gaussian_mutation(c2_chromosome['b' + str(l)], mutation_rate)
 
             # Create children from chromosomes generated above
-            c1 = Snake(p1.board_size, chromosome=c1_chromosome, apple_seed=0, hidden_layer_architecture=p1.hidden_layer_architecture)
-            c2 = Snake(p2.board_size, chromosome=c2_chromosome, apple_seed=0, hidden_layer_architecture=p2.hidden_layer_architecture)
+            c1 = Snake(p1.board_size, chromosome=c1_chromosome, hidden_layer_architecture=p1.hidden_layer_architecture)
+            c2 = Snake(p2.board_size, chromosome=c2_chromosome, hidden_layer_architecture=p2.hidden_layer_architecture)
 
             # Decode the chromosomes to get the network weights and bias filled out
             # @TODO: might just be able to do this in teh update
