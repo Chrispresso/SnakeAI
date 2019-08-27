@@ -4,8 +4,9 @@ from fractions import Fraction
 import random
 from collections import deque
 import sys
-from misc import *
+import os
 
+from misc import *
 from genetic_algorithm.individual import Individual
 from neural_network import FeedForwardNetwork, linear, sigmoid, tanh, relu
 
@@ -41,7 +42,7 @@ class Snake(Individual):
                  apple_seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
                  starting_direction: Optional[str] = None,  # @TODO: 'd'/None
-                 hidden_layer_architecture: Optional[List[int]] = [12, 9]
+                 hidden_layer_architecture: Optional[List[int]] = [15, 9]
                  ):
 
         self._direction_to_angle = {
@@ -109,7 +110,11 @@ class Snake(Individual):
     
     def calculate_fitness(self):
         # Give positive minimum fitness for roulette wheel selection
-        self._fitness = 200*self.score + .25*self._frames
+        # self._fitness = 200*self.score + .25*self._frames
+        if self.score == 0:
+            self._fitness = .25 * self._frames
+        else:
+            self._fitness = .25*self._frames + (50 * 3 ** self.score)
 
     @property
     def chromosome(self):
@@ -117,7 +122,7 @@ class Snake(Individual):
 
     def encode_chromosome(self):
         # L = len(self.network.params) // 2
-        L = len(self.network.layer_nodes) - 1
+        L = len(self.network.layer_nodes)
         # Encode weights and bias
         for layer in range(1, L):
             l = str(layer)
@@ -126,7 +131,7 @@ class Snake(Individual):
 
     def decode_chromosome(self):
         # L = len(self.network.params) // 2
-        L = len(self.network.layer_nodes) - 1
+        L = len(self.network.layer_nodes)
         # Decode weights and bias
         for layer in range(1, L):
             l = str(layer)
@@ -384,3 +389,39 @@ class Snake(Individual):
 
         # Tail starts moving the same direction
         self.tail_direction = self.direction
+
+def save_snake(population_folder: str, individual_name: str, snake: Snake) -> None:
+    if not os.path.exists(population_folder):
+        os.makedirs(population_folder)
+
+    L = len(snake.network.layer_nodes)
+    for l in range(1, L):
+        w_name = 'W' + str(l)
+        b_name = 'b' + str(l)
+
+        weights = snake.network.params[w_name]
+        bias = snake.network.params[b_name]
+
+        # Make directory for the individual
+        individual_dir = os.path.join(population_folder, individual_name)
+        os.makedirs(individual_dir)
+
+        np.save(w_name, weights)
+        np.save(b_name, bias)
+
+def load_snake(population_folder: str, individual_name: str) -> Snake:
+    params = {}
+    for fname in os.listdir(os.path.join(population_folder, individual_name)):
+        if individual_name in fname:
+            extension = fname.rsplit('.npy', 1)
+            if len(extension) == 2:
+                param = fname.rsplit('_', 1)[1]
+                param = param[:-len('.npy')]  # Remove extension
+                print(param)
+                params[param] = np.load(os.path.join(path, fname))
+            else:
+                continue
+    
+    # @TODO: Save off the boardsize as well
+    snake = Snake((50,50), chromosome=params)
+    return snake

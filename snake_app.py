@@ -33,9 +33,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
         
         individuals = [Snake(board_size, apple_seed=0, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'])]
-        self.best_fitness = 10
+        self.best_fitness = 0
         self.best_score = 0
         self.population = Population(individuals)
+
         for individual in self.population.individuals:
             individual.encode_chromosome()
 
@@ -48,7 +49,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
         # self.timer.setInterval(10)
-        self.timer.start(1000./500)
+        self.timer.start(1000./1000)
 
         # self.show()
         self.update()
@@ -96,10 +97,12 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # Next generation
             if self._current_individual == settings['population_size']:
-                print('----Max fitness:', self.population.fittest_individual.fitness)
-                print('----Average fitness:', self.population.average_fitness)
-                self.next_generation()
                 print('======================= Gneration {} ======================='.format(self.current_generation))
+                print('----Max fitness:', self.population.fittest_individual.fitness)
+                print('----Best Score:', self.population.fittest_individual.score)
+                print('----Average fitness:', self.population.average_fitness)
+                # save_snake('test_dir', str(self.current_generation), self.population.fittest_individual)
+                self.next_generation()
             else:
                 
                 self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, settings['population_size']))
@@ -135,7 +138,7 @@ class MainWindow(QtWidgets.QMainWindow):
             mutation_rate = 0.05
 
             # L = len(p1.network.params) // 2
-            L = len(p1.network.layer_nodes) - 1
+            L = len(p1.network.layer_nodes)
             c1_chromosome = {}
             c2_chromosome = {}
 
