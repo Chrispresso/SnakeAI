@@ -94,6 +94,8 @@ class Snake(Individual):
 
 
         # For creating the next apple
+        if apple_seed is None:
+            apple_seed = np.random.randint(-1000000000, 1000000000)
         self.apple_seed = apple_seed  # Only needed for saving/loading replay
         self.rand_apple = random.Random(self.apple_seed)
 
@@ -449,15 +451,12 @@ def load_snake(population_folder: str, individual_name: str, settings: Optional[
 
     params = {}
     for fname in os.listdir(os.path.join(population_folder, individual_name)):
-        if individual_name in fname:
-            extension = fname.rsplit('.npy', 1)
-            if len(extension) == 2:
-                param = fname.rsplit('_', 1)[1]
-                param = param[:-len('.npy')]  # Remove extension
-                params[param] = np.load(os.path.join(population_folder, fname))
-            else:
-                continue
-
+        extension = fname.rsplit('.npy', 1)
+        if len(extension) == 2:
+            param = extension[0]
+            params[param] = np.load(os.path.join(population_folder, individual_name, fname))
+        else:
+            continue
 
     # Load constructor params for the specific snake
     constructor_params = {}
@@ -469,5 +468,6 @@ def load_snake(population_folder: str, individual_name: str, settings: Optional[
                   start_pos=Point.from_dict(constructor_params['start_pos']),
                   apple_seed=constructor_params['apple_seed'],
                   initial_velocity=constructor_params['initial_velocity'],
-                  starting_direction=constructor_params['starting_direction'])
+                  starting_direction=constructor_params['starting_direction'],
+                  hidden_layer_architecture=settings['hidden_network_architecture'])
     return snake
