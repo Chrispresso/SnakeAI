@@ -77,7 +77,7 @@ class Snake(Individual):
         # Each "Vision" has 3 distances it tracks: wall, apple and self
         # there are also one-hot encoded direction and one-hot encoded tail direction,
         # each of which have 4 possibilities.
-        num_inputs = len(self._vision_type) * 3 + 4 + 4
+        num_inputs = len(self._vision_type) * 3 + 4 + 4 #@TODO: Add one-hot back in 
         self.vision_as_array: np.ndarray = np.zeros((num_inputs, 1))
         self.network_architecture = [num_inputs]                          # Inputs
         self.network_architecture.extend(self.hidden_layer_architecture)  # Hidden layers
@@ -86,12 +86,14 @@ class Snake(Individual):
 
         # If chromosome is set, take it
         if chromosome:
-            self._chromosome = chromosome
-            self.decode_chromosome()
+            # self._chromosome = chromosome
+            self.network.params = chromosome
+            # self.decode_chromosome()
         else:
-            self._chromosome = {}
-            self.encode_chromosome()
-
+            # self._chromosome = {}
+            # self.encode_chromosome()
+            pass
+            
 
         # For creating the next apple
         if apple_seed is None:
@@ -127,27 +129,30 @@ class Snake(Individual):
 
     @property
     def chromosome(self):
-        return self._chromosome
+        # return self._chromosome
+        pass
 
     def encode_chromosome(self):
-        # L = len(self.network.params) // 2
-        L = len(self.network.layer_nodes)
-        # Encode weights and bias
-        for layer in range(1, L):
-            l = str(layer)
-            self._chromosome['W' + l] = self.network.params['W' + l].flatten()
-            self._chromosome['b' + l] = self.network.params['b' + l].flatten()
+        # # L = len(self.network.params) // 2
+        # L = len(self.network.layer_nodes)
+        # # Encode weights and bias
+        # for layer in range(1, L):
+        #     l = str(layer)
+        #     self._chromosome['W' + l] = self.network.params['W' + l].flatten()
+        #     self._chromosome['b' + l] = self.network.params['b' + l].flatten()
+        pass
 
     def decode_chromosome(self):
-        # L = len(self.network.params) // 2
-        L = len(self.network.layer_nodes)
-        # Decode weights and bias
-        for layer in range(1, L):
-            l = str(layer)
-            w_shape = (self.network_architecture[layer], self.network_architecture[layer-1])
-            b_shape = (self.network_architecture[layer], 1)
-            self.network.params['W' + l] = self._chromosome['W' + l].reshape(w_shape)
-            self.network.params['b' + l] = self._chromosome['b' + l].reshape(b_shape)
+        # # L = len(self.network.params) // 2
+        # L = len(self.network.layer_nodes)
+        # # Decode weights and bias
+        # for layer in range(1, L):
+        #     l = str(layer)
+        #     w_shape = (self.network_architecture[layer], self.network_architecture[layer-1])
+        #     b_shape = (self.network_architecture[layer], 1)
+        #     self.network.params['W' + l] = self._chromosome['W' + l].reshape(w_shape)
+        #     self.network.params['b' + l] = self._chromosome['b' + l].reshape(b_shape)
+        pass
 
     def look(self):
         # Look all around
@@ -208,9 +213,9 @@ class Snake(Individual):
         #            total_distance += 1   or
         #            normalize with distance as numerator
         dist_to_wall = 1.0 / total_distance
-        # dist_to_apple = 1.0 / dist_to_apple
+        # dist_to_apple = 1.0 - (1.0 / dist_to_apple)
         dist_to_apple = 1.0 if dist_to_apple != np.inf else 0.0
-        # dist_to_self = 1.0 / dist_to_self
+        # dist_to_self = 1.0 - (1.0 / dist_to_self)
         dist_to_self = 1.0 if dist_to_self != np.inf else 0.0
         # if dist_to_apple == np.inf:
         #     dist_to_apple = 0.0
@@ -235,6 +240,7 @@ class Snake(Individual):
             self.vision_as_array[va_index + 1, 0] = vision.dist_to_apple
             self.vision_as_array[va_index + 2, 0] = vision.dist_to_self
 
+        # return # @TODO: Re-add the one-hot encodings below
         i = len(self._vision) * 3  # Start at the end
 
         direction = self.direction[0].lower()
@@ -353,7 +359,7 @@ class Snake(Individual):
 
             self._frames_since_last_apple += 1
             #@TODO: MAybe make max number of a variable
-            if self._frames_since_last_apple > 150:
+            if self._frames_since_last_apple > 500:
                 self.is_alive = False
                 return False
 

@@ -11,7 +11,9 @@ from genetic_algorithm.population import Population
 from genetic_algorithm.selection import elitism_selection, roulette_wheel_selection, tournament_selection
 from genetic_algorithm.mutation import gaussian_mutation
 from genetic_algorithm.crossover import simulated_binary_crossover as SBX
+from genetic_algorithm.crossover import uniform_binary_crossover, single_point_binary_crossover, single_row_binary_crossover, uniform_crossover_test
 from math import sqrt
+import random
 
 
 SQUARE_SIZE = (12, 12)
@@ -32,16 +34,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.width = self.snake_widget_width + 700 + self.border[0] + self.border[2]
         self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
         
-        individuals = [Snake(board_size, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'])]
+        individuals = [Snake(board_size, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'] - (65+1))]
         self.best_fitness = 0
         self.best_score = 0
-        self.population = Population(individuals)
 
-        for individual in self.population.individuals:
-            individual.encode_chromosome()
+        
+        # snake = Snake(snake.board_size, chromosome=snake.network.params, start_pos=Point(5,5), hidden_layer_architecture=snake.hidden_layer_architecture)
+        # self.population.individuals[0] = snake
+
+        # for individual in self.population.individuals:
+        #     individual.encode_chromosome()
 
         self._current_individual = 0
+        for i in range(0, 65+1):
+            snake = load_snake('test_selection', 'best_ind' + str(i))
+            new_snake = Snake(snake.board_size, chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture)
+            individuals.append(new_snake)
+
+        random.shuffle(individuals)
+
+        self.population = Population(individuals)
+
+
+        # snake = load_snake('test_selection', 'best_ind65')
+        # snake = Snake(snake.board_size, chromosome=snake.network.params, start_pos=Point(5,5), hidden_layer_architecture=snake.hidden_layer_architecture)
+        # self.population.individuals[0] = snake
         self.snake = self.population.individuals[self._current_individual]
+        self.snake = snake
         self.current_generation = 0
 
         self.init_window()
@@ -52,7 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.start(1000./1000)
 
         # self.show()
-        self.update()
+        # self.update()
 
     def init_window(self):
         self.centralWidget = QtWidgets.QWidget(self)
@@ -79,15 +98,17 @@ class MainWindow(QtWidgets.QMainWindow):
     def update(self) -> None:
         self.snake_widget_window.update()
         self.nn_viz_window.update()
+        # Current individual is alive
         if self.snake.is_alive:
             self.snake.move()
             if self.snake.score > self.best_score:
                 self.best_score = self.snake.score
                 self.ga_window.best_score_label.setText(str(self.snake.score))
+        # Current individual is dead         
         else:
-            # Calculate fitness
-            self.population.individuals[self._current_individual].calculate_fitness()
-            fitness = self.population.individuals[self._current_individual].fitness
+            # Calculate fitness of current individual
+            self.snake.calculate_fitness()
+            fitness = self.snake.fitness
             print(self._current_individual, fitness)
             if fitness > self.best_fitness:
                 self.best_fitness = fitness
@@ -96,12 +117,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self._current_individual += 1
             
             # Next generation
-            if self._current_individual == settings['population_size']:
+            if (self.current_generation > 0 and self._current_individual == settings['population_size'] + 1000) or\
+                (self.current_generation == 0 and self._current_individual == settings['population_size']):
+            # if self._current_individual == settings['population_size']:
                 print('======================= Gneration {} ======================='.format(self.current_generation))
                 print('----Max fitness:', self.population.fittest_individual.fitness)
                 print('----Best Score:', self.population.fittest_individual.score)
                 print('----Average fitness:', self.population.average_fitness)
-                save_snake('test_dir', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
+                save_snake('test_multi_selection', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
                 self.next_generation()
             else:
                 
@@ -115,72 +138,118 @@ class MainWindow(QtWidgets.QMainWindow):
         self._increment_generation()
         self._current_individual = 0
 
-        next_pop: List[Snake] = []
+        # next_pop: List[Snake] = self.population.individuals[:]
 
         # Decode chromosome and calculate fitness
         for individual in self.population.individuals:
-            individual.decode_chromosome()
+            # individual.decode_chromosome()
             individual.calculate_fitness()
         
-        # Get best individuals from current population
-        best_from_pop = elitism_selection(self.population, self.settings['num_elitism'])
-        elite = []
-        for best in best_from_pop:
-            chromosome = best.chromosome
-            copy = Snake(best.board_size, chromosome=chromosome, hidden_layer_architecture=best.hidden_layer_architecture)
-            copy.decode_chromosome()
-            elite.append(copy)
-        next_pop.extend(elite)
+        self.population.individuals = elitism_selection(self.population, self.settings['population_size'])
+        random.shuffle(self.population.individuals)
+        next_pop: List[Snake] = []
+        for individual in self.population.individuals:
+            params = individual.network.params
+            board_size = individual.board_size
+            hidden_layer_architecture = individual.hidden_layer_architecture
+            s = Snake(board_size, chromosome=params, hidden_layer_architecture=hidden_layer_architecture)
+            next_pop.append(s)
 
-        while len(next_pop) < self.settings['population_size']:
+        # Get best individuals from current population
+        # best_from_pop = elitism_selection(self.population, self.settings['num_elitism'])
+        # elite = []
+        # for best in best_from_pop:
+
+        #     chromosome = best.network.params
+        #     copy = Snake(best.board_size, chromosome=chromosome, hidden_layer_architecture=best.hidden_layer_architecture)
+        #                  #apple_seed=best.apple_seed, starting_direction=best.starting_direction, start_pos=best.start_pos)
+        #     elite.append(copy)
+        # next_pop.extend(elite)
+
+        # while len(next_pop) < self.settings['population_size']:
+        while len(next_pop) < self.settings['population_size'] + 1000:
             # p1, p2 = tournament_selection(self.population, 2, 4)
             p1, p2 = roulette_wheel_selection(self.population, 2)
             mutation_rate = 0.05
 
             # L = len(p1.network.params) // 2
             L = len(p1.network.layer_nodes)
-            c1_chromosome = {}
-            c2_chromosome = {}
+            # c1_chromosome = {}
+            # c2_chromosome = {}
+            c1_params = {}
+            c2_params = {}
 
             # Each W_l and b_l are treated as their own chromosome.
             # Because of this I need to perform crossover/mutation on each chromosome between parents
             for l in range(1, L):
                 # W_l crossover
-                p1_W_l = p1.chromosome['W' + str(l)]
-                p2_W_l = p2.chromosome['W' + str(l)]
-                c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 1)
-                c1_chromosome['W' + str(l)] = c1_W_l
-                c2_chromosome['W' + str(l)] = c2_W_l
+                p1_W_l = p1.network.params['W' + str(l)]  # p1_W_l = p1.chromosome['W' + str(l)]
+                p2_W_l = p2.network.params['W' + str(l)]  
+                p1_b_l = p1.network.params['b' + str(l)]
+                p2_b_l = p2.network.params['b' + str(l)]
+
+                # c1_W_l, c2_W_l = single_row_binary_crossover(p1_W_l, p2_W_l)
+                c1_W_l, c2_W_l = None, None
+                c1_b_l, c2_b_l = None, None
+                # SBX
+                if random.random() < 0.5:
+                    c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 100)
+                    c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 100)
+                # Single row
+                else:
+                    c1_W_l, c2_W_l = single_point_binary_crossover(p1_W_l, p2_W_l)
+                    c1_b_l, c2_b_l = single_point_binary_crossover(p1_b_l, p2_b_l)
+
+                # c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 100)
+                # c1_W_l, c2_W_l = uniform_crossover_test(p1_W_l, p2_W_l)
+                # c1_W_l, c2_W_l = single_point_binary_crossover(p1_W_l, p2_W_l)
+                c1_params['W' + str(l)] = c1_W_l
+                c2_params['W' + str(l)] = c2_W_l
 
                 # b_l crossover
-                p1_b_l = p1.chromosome['b' + str(l)]
-                p2_b_l = p2.chromosome['b' + str(l)]
-                c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 1)
-                c1_chromosome['b' + str(l)] = c1_b_l
-                c2_chromosome['b' + str(l)] = c2_b_l
+                
+                # c1_b_l, c2_b_l = single_row_binary_crossover(p1_b_l, p2_b_l)
+                # c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 100)
+                # c1_b_l, c2_b_l = uniform_crossover_test(p1_b_l, p2_b_l)
+                # c1_b_l, c2_b_l = single_point_binary_crossover(p1_b_l, p2_b_l)
+                c1_params['b' + str(l)] = c1_b_l
+                c2_params['b' + str(l)] = c2_b_l
+                # c1_params['b' + str(l)] = p1_b_l
+                # c2_params['b' + str(l)] = p2_b_l
 
-                scale = .2                
+                scale = .1
                 # Mutate child weights
-                gaussian_mutation(c1_chromosome['W' + str(l)], mutation_rate)
-                gaussian_mutation(c2_chromosome['W' + str(l)], mutation_rate)
+                gaussian_mutation(c1_params['W' + str(l)], mutation_rate, scale=scale)
+                gaussian_mutation(c2_params['W' + str(l)], mutation_rate, scale=scale)
 
                 # Mutate child bias
-                gaussian_mutation(c1_chromosome['b' + str(l)], mutation_rate)
-                gaussian_mutation(c2_chromosome['b' + str(l)], mutation_rate)
+                gaussian_mutation(c1_params['b' + str(l)], mutation_rate, scale=scale)
+                gaussian_mutation(c2_params['b' + str(l)], mutation_rate, scale=scale)
+
+                # Clip
+                np.clip(c1_params['W' + str(l)], -1, 1, out=c1_params['W' + str(l)])
+                np.clip(c2_params['W' + str(l)], -1, 1, out=c2_params['W' + str(l)])
+                np.clip(c1_params['b' + str(l)], -1, 1, out=c1_params['b' + str(l)])
+                np.clip(c2_params['b' + str(l)], -1, 1, out=c2_params['b' + str(l)])
 
             # Create children from chromosomes generated above
-            c1 = Snake(p1.board_size, chromosome=c1_chromosome, hidden_layer_architecture=p1.hidden_layer_architecture)
-            c2 = Snake(p2.board_size, chromosome=c2_chromosome, hidden_layer_architecture=p2.hidden_layer_architecture)
+            c1 = Snake(p1.board_size, chromosome=c1_params, hidden_layer_architecture=p1.hidden_layer_architecture)
+            c2 = Snake(p2.board_size, chromosome=c2_params, hidden_layer_architecture=p2.hidden_layer_architecture)
 
             # Decode the chromosomes to get the network weights and bias filled out
             # @TODO: might just be able to do this in teh update
-            c1.decode_chromosome()
-            c2.decode_chromosome()
+            # c1.decode_chromosome()
+            # c2.decode_chromosome()
+            # c1.encode_chromosome()
+            # c2.encode_chromosome()
 
             next_pop.extend([c1, c2])
         
         # Set the next generation
         self.population.individuals = next_pop
+
+        # for individual in self.population.individuals:
+        #     individual.encode_chromosome()
 
 
     def _increment_generation(self):

@@ -4,12 +4,13 @@
 
 import numpy as np
 from scipy import stats
-from typing import List, Union
+from typing import List, Union, Optional
 from .individual import Individual
 
 
 def gaussian_mutation(chromosome: np.ndarray, prob_mutation: float, 
-                      mu: List[float] = None, sigma: List[float] = None) -> None:
+                      mu: List[float] = None, sigma: List[float] = None,
+                      scale: Optional[float] = None) -> None:
     """
     Perform a gaussian mutation for each gene in an individual with probability, prob_mutation.
 
@@ -24,6 +25,10 @@ def gaussian_mutation(chromosome: np.ndarray, prob_mutation: float,
     # Otherwise center around N(0,1)
     else:
         gaussian_mutation = np.random.normal(size=chromosome.shape)
+    
+    if scale:
+        gaussian_mutation[mutation_array] *= scale
+
     # Update
     chromosome[mutation_array] += gaussian_mutation[mutation_array]
 
