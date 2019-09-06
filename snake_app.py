@@ -14,6 +14,7 @@ from genetic_algorithm.crossover import simulated_binary_crossover as SBX
 from genetic_algorithm.crossover import uniform_binary_crossover, single_point_binary_crossover, single_row_binary_crossover, uniform_crossover_test
 from math import sqrt
 import random
+import csv
 
 
 SQUARE_SIZE = (12, 12)
@@ -56,13 +57,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.population = Population(individuals)
 
 
-        snake = load_snake('test_del3', 'best_ind348')
+        # snake = load_snake('test_del3', 'best_ind348')
         # snake = load_snake('test_del2', 'best_ind73')
-        snake = Snake((20,20), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
-                      apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
-        self.population.individuals[0] = snake
+        # snake = Snake((20,20), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
+        #               apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
+        # self.population.individuals[0] = snake
         self.snake = self.population.individuals[self._current_individual]
-        self.snake = snake
+        # self.snake = snake
         self.current_generation = 0
 
         self.init_window()
@@ -70,9 +71,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
         # self.timer.setInterval(10)
-        self.timer.start(1000./15)
+        self.timer.start(1000./1000)
 
-        self.show()
+        # self.show()
         # self.update()
 
     def init_window(self):
@@ -122,11 +123,12 @@ class MainWindow(QtWidgets.QMainWindow):
             if (self.current_generation > 0 and self._current_individual == settings['population_size'] + 1500) or\
                 (self.current_generation == 0 and self._current_individual == settings['population_size']):
             # if self._current_individual == settings['population_size']:
+                print('=== 1|0 mu + lambda (500, 1500) ===')
                 print('======================= Gneration {} ======================='.format(self.current_generation))
                 print('----Max fitness:', self.population.fittest_individual.fitness)
                 print('----Best Score:', self.population.fittest_individual.score)
                 print('----Average fitness:', self.population.average_fitness)
-                save_snake('test_del_7', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
+                save_snake('1_0_MPL_500_1500', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
                 self.next_generation()
             else:
                 
@@ -146,6 +148,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for individual in self.population.individuals:
             # individual.decode_chromosome()
             individual.calculate_fitness()
+
+        save_stats(self.population, r'C:\Users\wilkerso\dev\SnakeAI\stats', '1_0_MPL_500_1500')
         
         self.population.individuals = elitism_selection(self.population, self.settings['population_size'])
         
@@ -175,7 +179,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # next_pop.extend(elite)
 
         # while len(next_pop) < self.settings['population_size']:
-        while len(next_pop) < settings['population_size'] + 2000:
+        while len(next_pop) < settings['population_size'] + 1500:
             # p1, p2 = tournament_selection(self.population, 2, 4)
             p1, p2 = roulette_wheel_selection(self.population, 2)
             mutation_rate = 0.05
@@ -465,6 +469,104 @@ class SnakeWidget(QtWidgets.QWidget):
             self.snake.direction = 'r'
         elif key_press == Qt.Key_Left:
             self.snake.direction = 'l'
+
+def _calc_stats(data: List[Union[int, float]]) -> Tuple[float, float, float, float, float]:
+    mean = np.mean(data)
+    median = np.median(data)
+    std = np.std(data)
+    _min = float(min(data))
+    _max = float(max(data))
+
+    return (mean, median, std, _min, _max)
+
+def save_stats(population: Population, path_to_dir: str, fname: str):
+    if not os.path.exists(path_to_dir):
+        os.makedirs(path_to_dir)
+
+    f = os.path.join(path_to_dir, fname + '.csv')
+    
+    frames = [individual._frames for individual in population.individuals]
+    apples = [individual.score for individual in population.individuals]
+    fitness = [individual.fitness for individual in population.individuals]
+
+    write_header = True
+    if os.path.exists(f):
+        write_header = False
+
+    trackers = [('steps', frames),
+                ('apples', apples),
+                ('fitness', fitness)
+                ]
+    stats = ['mean', 'median', 'std', 'min', 'max']
+
+    header = [t[0] + '_' + s for t in trackers for s in stats]
+
+    with open(f, 'a') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=header, delimiter=',')
+        if write_header:
+            writer.writeheader()
+
+        row = {}
+        # Create a row to insert into csv
+        for tracker_name, tracker_object in trackers:
+            curr_stats = _calc_stats(tracker_object)
+            for curr_stat, stat_name in zip(curr_stats, stats):
+                entry_name = '{}_{}'.format(tracker_name, stat_name)
+                row[entry_name] = curr_stat
+
+        # Write row
+        writer.writerow(row)
+
+def load_stats(path_to_stats: str, normalize: Optional[bool] = True):
+    data = {}
+
+    fieldnames = None
+    trackers_stats = None
+    trackers = None
+    stats_names = None
+
+    with open(path_to_stats, 'r') as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        fieldnames = reader.fieldnames
+        trackers_stats = [f.split('_') for f in fieldnames]
+        trackers = set(ts[0] for ts in trackers_stats)
+        stats_names = set(ts[1] for ts in trackers_stats)
+        
+        for tracker, stat_name in trackers_stats:
+            if tracker not in data:
+                data[tracker] = {}
+            
+            if stat_name not in data[tracker]:
+                data[tracker][stat_name] = []
+
+        for line in reader:
+            for tracker in trackers:
+                for stat_name in stats_names:
+                    value = float(line['{}_{}'.format(tracker, stat_name)])
+                    data[tracker][stat_name].append(value)
+        
+    if normalize:
+        factors = {}
+        for tracker in trackers:
+            factors[tracker] = {}
+            for stat_name in stats_names:
+                factors[tracker][stat_name] = 1.0
+
+        for tracker in trackers:
+            for stat_name in stats_names:
+                max_val = max([abs(d) for d in data[tracker][stat_name]])
+                if max_val == 0:
+                    max_val = 1
+                factors[tracker][stat_name] = float(max_val)
+
+        for tracker in trackers:
+            for stat_name in stats_names:
+                factor = factors[tracker][stat_name]
+                d = data[tracker][stat_name]
+                data[tracker][stat_name] = [val / factor for val in d]
+
+    return data
 
 
 

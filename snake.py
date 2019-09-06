@@ -363,7 +363,7 @@ class Snake(Individual):
 
             self._frames_since_last_apple += 1
             #@TODO: MAybe make max number of a variable
-            if self._frames_since_last_apple > 500:
+            if self._frames_since_last_apple > 150:
                 self.is_alive = False
                 return False
 
