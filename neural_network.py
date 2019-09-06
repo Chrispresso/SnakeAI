@@ -28,9 +28,11 @@ class FeedForwardNetwork(object):
 
         # Initialize weights
         for l in range(1, len(self.layer_nodes)):
-            self.params['W' + str(l)] = np.random.randn(self.layer_nodes[l], self.layer_nodes[l-1]) * 0.01
-            # self.params['b' + str(l)] = np.random.normal(0, .1, (self.layer_nodes[l], 1)) # np.zeros((self.layer_nodes[l], 1))
-            self.params['b' + str(l)] = np.zeros((self.layer_nodes[l], 1))
+            # self.params['W' + str(l)] = np.random.randn(self.layer_nodes[l], self.layer_nodes[l-1]) * 0.2
+            # self.params['b' + str(l)] = np.random.randn(self.layer_nodes[l], 1) * 0.2
+            self.params['W' + str(l)] = np.random.uniform(-1, 1, size=(self.layer_nodes[l], self.layer_nodes[l-1]))
+            self.params['b' + str(l)] = np.random.uniform(-1, 1, size=(self.layer_nodes[l], 1))
+            # self.params['b' + str(l)] = np.zeros((self.layer_nodes[l], 1))
             # self.params['W' + str(l)] = np.ones((self.layer_nodes[l], self.layer_nodes[l-1]))
             self.params['A' + str(l)] = None
         

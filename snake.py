@@ -63,8 +63,12 @@ class Snake(Individual):
         self.hidden_layer_architecture = hidden_layer_architecture
 
         if not start_pos:
-            x = random.randint(10, self.board_size[0] - 9)
-            y = random.randint(10, self.board_size[1] - 9)
+            #@TODO: undo this
+            # x = random.randint(10, self.board_size[0] - 9)
+            # y = random.randint(10, self.board_size[1] - 9)
+            x = random.randint(2, self.board_size[0] - 3)
+            y = random.randint(2, self.board_size[1] - 3)
+
             start_pos = Point(x, y)
         self.start_pos = start_pos
 
@@ -125,7 +129,8 @@ class Snake(Individual):
         # else:
         #     self._fitness = .25*self._frames * ((2 ** self.score) + (self.score * 1200)) - (self._frames * 100)
         self._fitness = (self._frames) + ((2**self.score) + (self.score**2.1)*500) - (((.25 * self._frames)**1.3) * (self.score**1.2))
-        self._fitness = max(self._fitness, 0)
+        # self._fitness = (self._frames) + ((2**self.score) + (self.score**2.1)*500) - (((.25 * self._frames)) * (self.score))
+        self._fitness = max(self._fitness, .1)
 
     @property
     def chromosome(self):
@@ -175,7 +180,8 @@ class Snake(Individual):
         self_location = None
 
         position = self.snake_array[0].copy()
-        distance = abs(slope.rise) + abs(slope.run)
+        # distance = abs(slope.rise) + abs(slope.run)
+        distance = 1.0
         total_distance = 0.0
         # Can't start by looking at yourself
         position.x += slope.run
@@ -202,10 +208,6 @@ class Snake(Individual):
         assert(total_distance != 0.0)
 
 
-        # Special case if it can move 3 (i.e. slope is 2)
-        if distance == 3:
-            # @TODO: The distance may need to be changed since the slope can run past the edge of the board
-            pass
 
         # Normalize where 0 is really far, 1 is really close
         # @TODO: Will it matter that total_distance here can't be 1?
@@ -213,9 +215,9 @@ class Snake(Individual):
         #            total_distance += 1   or
         #            normalize with distance as numerator
         dist_to_wall = 1.0 / total_distance
-        # dist_to_apple = 1.0 - (1.0 / dist_to_apple)
+        # dist_to_apple = 1.0 / dist_to_apple
         dist_to_apple = 1.0 if dist_to_apple != np.inf else 0.0
-        # dist_to_self = 1.0 - (1.0 / dist_to_self)
+        # dist_to_self = 1.0 / dist_to_self
         dist_to_self = 1.0 if dist_to_self != np.inf else 0.0
         # if dist_to_apple == np.inf:
         #     dist_to_apple = 0.0
@@ -240,6 +242,8 @@ class Snake(Individual):
             self.vision_as_array[va_index + 1, 0] = vision.dist_to_apple
             self.vision_as_array[va_index + 2, 0] = vision.dist_to_self
 
+
+        # return
         # return # @TODO: Re-add the one-hot encodings below
         i = len(self._vision) * 3  # Start at the end
 

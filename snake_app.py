@@ -21,10 +21,10 @@ SQUARE_SIZE = (12, 12)
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, settings, board_size=(50, 50)):
+    def __init__(self, settings):
         super().__init__()
         self.settings = settings
-        self.board_size = board_size
+        self.board_size = settings['board_size']
         self.border = (10, 10, 10, 10)  # Left, Top, Right, Bottom
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
         self.snake_widget_height = SQUARE_SIZE[1] * self.board_size[1]
@@ -34,7 +34,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.width = self.snake_widget_width + 700 + self.border[0] + self.border[2]
         self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
         
-        individuals = [Snake(board_size, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'] - (65+1))]
+        individuals = [Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'])]
         self.best_fitness = 0
         self.best_score = 0
 
@@ -46,19 +46,21 @@ class MainWindow(QtWidgets.QMainWindow):
         #     individual.encode_chromosome()
 
         self._current_individual = 0
-        for i in range(0, 65+1):
-            snake = load_snake('test_selection', 'best_ind' + str(i))
-            new_snake = Snake(snake.board_size, chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture)
-            individuals.append(new_snake)
+        # for i in range(0, 65+1):
+        #     snake = load_snake('test_selection', 'best_ind' + str(i))
+        #     new_snake = Snake(snake.board_size, chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture)
+        #     individuals.append(new_snake)
 
-        random.shuffle(individuals)
+        # random.shuffle(individuals)
 
         self.population = Population(individuals)
 
 
-        # snake = load_snake('test_selection', 'best_ind65')
-        # snake = Snake(snake.board_size, chromosome=snake.network.params, start_pos=Point(5,5), hidden_layer_architecture=snake.hidden_layer_architecture)
-        # self.population.individuals[0] = snake
+        snake = load_snake('test_del3', 'best_ind348')
+        # snake = load_snake('test_del2', 'best_ind73')
+        snake = Snake((20,20), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
+                      apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
+        self.population.individuals[0] = snake
         self.snake = self.population.individuals[self._current_individual]
         self.snake = snake
         self.current_generation = 0
@@ -68,9 +70,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
         # self.timer.setInterval(10)
-        self.timer.start(1000./1000)
+        self.timer.start(1000./15)
 
-        # self.show()
+        self.show()
         # self.update()
 
     def init_window(self):
@@ -117,14 +119,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self._current_individual += 1
             
             # Next generation
-            if (self.current_generation > 0 and self._current_individual == settings['population_size'] + 1000) or\
+            if (self.current_generation > 0 and self._current_individual == settings['population_size'] + 1500) or\
                 (self.current_generation == 0 and self._current_individual == settings['population_size']):
             # if self._current_individual == settings['population_size']:
                 print('======================= Gneration {} ======================='.format(self.current_generation))
                 print('----Max fitness:', self.population.fittest_individual.fitness)
                 print('----Best Score:', self.population.fittest_individual.score)
                 print('----Average fitness:', self.population.average_fitness)
-                save_snake('test_multi_selection', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
+                save_snake('test_del_7', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
                 self.next_generation()
             else:
                 
@@ -146,13 +148,19 @@ class MainWindow(QtWidgets.QMainWindow):
             individual.calculate_fitness()
         
         self.population.individuals = elitism_selection(self.population, self.settings['population_size'])
+        
         random.shuffle(self.population.individuals)
         next_pop: List[Snake] = []
         for individual in self.population.individuals:
             params = individual.network.params
             board_size = individual.board_size
             hidden_layer_architecture = individual.hidden_layer_architecture
-            s = Snake(board_size, chromosome=params, hidden_layer_architecture=hidden_layer_architecture)
+            start_pos = individual.start_pos
+            apple_seed = individual.apple_seed
+            starting_direction = individual.starting_direction
+            #@TODO: remove the seed, start pos and direction
+            s = Snake(board_size, chromosome=params, hidden_layer_architecture=hidden_layer_architecture)#,
+                    #   start_pos=start_pos, starting_direction=starting_direction, apple_seed=apple_seed)
             next_pop.append(s)
 
         # Get best individuals from current population
@@ -167,7 +175,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # next_pop.extend(elite)
 
         # while len(next_pop) < self.settings['population_size']:
-        while len(next_pop) < self.settings['population_size'] + 1000:
+        while len(next_pop) < settings['population_size'] + 2000:
             # p1, p2 = tournament_selection(self.population, 2, 4)
             p1, p2 = roulette_wheel_selection(self.population, 2)
             mutation_rate = 0.05
@@ -193,12 +201,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 c1_b_l, c2_b_l = None, None
                 # SBX
                 if random.random() < 0.5:
-                    c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 100)
-                    c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 100)
+                    c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 1)
+                    c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 1)
                 # Single row
                 else:
-                    c1_W_l, c2_W_l = single_point_binary_crossover(p1_W_l, p2_W_l)
-                    c1_b_l, c2_b_l = single_point_binary_crossover(p1_b_l, p2_b_l)
+                    c1_W_l, c2_W_l = single_point_binary_crossover(p1_W_l, p2_W_l, major='r')
+                    c1_b_l, c2_b_l = single_point_binary_crossover(p1_b_l, p2_b_l, major='r')
 
                 # c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 100)
                 # c1_W_l, c2_W_l = uniform_crossover_test(p1_W_l, p2_W_l)
@@ -217,7 +225,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 # c1_params['b' + str(l)] = p1_b_l
                 # c2_params['b' + str(l)] = p2_b_l
 
-                scale = .1
+                scale = .2
                 # Mutate child weights
                 gaussian_mutation(c1_params['W' + str(l)], mutation_rate, scale=scale)
                 gaussian_mutation(c2_params['W' + str(l)], mutation_rate, scale=scale)
@@ -246,6 +254,7 @@ class MainWindow(QtWidgets.QMainWindow):
             next_pop.extend([c1, c2])
         
         # Set the next generation
+        random.shuffle(next_pop)
         self.population.individuals = next_pop
 
         # for individual in self.population.individuals:
