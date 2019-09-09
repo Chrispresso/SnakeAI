@@ -9,7 +9,7 @@ import json
 
 from misc import *
 from genetic_algorithm.individual import Individual
-from neural_network import FeedForwardNetwork, linear, sigmoid, tanh, relu
+from neural_network import FeedForwardNetwork, linear, sigmoid, tanh, relu, leaky_relu, ActivationFunction, get_activation_by_name
 
 
 
@@ -43,16 +43,13 @@ class Snake(Individual):
                  apple_seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
                  starting_direction: Optional[str] = None,  # @TODO: 'd'/None
-                 hidden_layer_architecture: Optional[List[int]] = [1123125, 9]
+                 hidden_layer_architecture: Optional[List[int]] = [1123125, 9],
+                 hidden_activation: Optional[ActivationFunction] = 'relu',
+                 output_activation: Optional[ActivationFunction] = 'sigmoid',
+                 lifespan: Optional[Union[int, float]] = np.inf
                  ):
 
-        self._direction_to_angle = {
-            'r': 0.0,
-            'u': 90.0,
-            'l': 180.0,
-            'd': 270.0
-        }
-    
+        self.lifespan = lifespan
         self.score = 0  # Number of apples snake gets
         self._fitness = 0  # Overall fitness
         self._frames = 0  # Number of frames that the snake has been alive
@@ -61,6 +58,10 @@ class Snake(Individual):
 
         self.board_size = board_size
         self.hidden_layer_architecture = hidden_layer_architecture
+
+        
+        self.hidden_activation = hidden_activation
+        self.output_activation = output_activation
 
         if not start_pos:
             #@TODO: undo this
@@ -86,7 +87,10 @@ class Snake(Individual):
         self.network_architecture = [num_inputs]                          # Inputs
         self.network_architecture.extend(self.hidden_layer_architecture)  # Hidden layers
         self.network_architecture.append(4)                               # 4 outputs, ['u', 'd', 'l', 'r']
-        self.network = FeedForwardNetwork(self.network_architecture, relu, sigmoid)
+        self.network = FeedForwardNetwork(self.network_architecture,
+                                          get_activation_by_name(self.hidden_activation),
+                                          get_activation_by_name(self.output_activation)
+        )
 
         # If chromosome is set, take it
         if chromosome:
@@ -180,9 +184,9 @@ class Snake(Individual):
         self_location = None
 
         position = self.snake_array[0].copy()
-        # distance = abs(slope.rise) + abs(slope.run)
         distance = 1.0
         total_distance = 0.0
+
         # Can't start by looking at yourself
         position.x += slope.run
         position.y += slope.rise
@@ -363,7 +367,7 @@ class Snake(Individual):
 
             self._frames_since_last_apple += 1
             #@TODO: MAybe make max number of a variable
-            if self._frames_since_last_apple > 150:
+            if self._frames_since_last_apple > 120:
                 self.is_alive = False
                 return False
 
@@ -479,5 +483,8 @@ def load_snake(population_folder: str, individual_name: str, settings: Optional[
                   apple_seed=constructor_params['apple_seed'],
                   initial_velocity=constructor_params['initial_velocity'],
                   starting_direction=constructor_params['starting_direction'],
-                  hidden_layer_architecture=settings['hidden_network_architecture'])
+                  hidden_layer_architecture=settings['hidden_network_architecture'],
+                  hidden_activation=settings['hidden_layer_activation'],
+                  output_activation=settings['output_layer_activation']
+                  )
     return snake

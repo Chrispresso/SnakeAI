@@ -17,7 +17,7 @@ class FeedForwardNetwork(object):
                  layer_nodes: List[int],
                  hidden_activation: ActivationFunction,
                  output_activation: ActivationFunction,
-                 init_method: Optional[str] = 'xavier',
+                 init_method: Optional[str] = 'uniform',
                  seed: Optional[int] = None):
         self.params = {}
         self.layer_nodes = layer_nodes
@@ -26,14 +26,17 @@ class FeedForwardNetwork(object):
         self.inputs = None
         self.out = None
 
-        # Initialize weights
+        self.rand = np.random.RandomState(seed)
+
+        # Initialize weights and bias
         for l in range(1, len(self.layer_nodes)):
-            # self.params['W' + str(l)] = np.random.randn(self.layer_nodes[l], self.layer_nodes[l-1]) * 0.2
-            # self.params['b' + str(l)] = np.random.randn(self.layer_nodes[l], 1) * 0.2
-            self.params['W' + str(l)] = np.random.uniform(-1, 1, size=(self.layer_nodes[l], self.layer_nodes[l-1]))
-            self.params['b' + str(l)] = np.random.uniform(-1, 1, size=(self.layer_nodes[l], 1))
-            # self.params['b' + str(l)] = np.zeros((self.layer_nodes[l], 1))
-            # self.params['W' + str(l)] = np.ones((self.layer_nodes[l], self.layer_nodes[l-1]))
+            if init_method == 'uniform':
+                self.params['W' + str(l)] = np.random.uniform(-1, 1, size=(self.layer_nodes[l], self.layer_nodes[l-1]))
+                self.params['b' + str(l)] = np.random.uniform(-1, 1, size=(self.layer_nodes[l], 1))
+            
+            else:
+                raise Exception('Implement more options, bro')
+
             self.params['A' + str(l)] = None
         
         
@@ -61,3 +64,16 @@ class FeedForwardNetwork(object):
 
     def softmax(self, X: np.ndarray) -> np.ndarray:
         return np.exp(X) / np.sum(np.exp(X), axis=0)
+
+def get_activation_by_name(name: str) -> ActivationFunction:
+    activations = [('relu', relu),
+                   ('sigmoid', sigmoid),
+                   ('linear', linear),
+                   ('leaky_relu', leaky_relu),
+                   ('tanh', tanh),
+    ]
+
+    func = [activation[1] for activation in activations if activation[0].lower() == name.lower()]
+    assert len(func) == 1
+
+    return func[0]

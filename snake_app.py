@@ -9,7 +9,7 @@ from neural_network import FeedForwardNetwork, sigmoid, linear, relu
 from settings import settings
 from genetic_algorithm.population import Population
 from genetic_algorithm.selection import elitism_selection, roulette_wheel_selection, tournament_selection
-from genetic_algorithm.mutation import gaussian_mutation
+from genetic_algorithm.mutation import gaussian_mutation, random_uniform_mutation
 from genetic_algorithm.crossover import simulated_binary_crossover as SBX
 from genetic_algorithm.crossover import uniform_binary_crossover, single_point_binary_crossover, single_row_binary_crossover, uniform_crossover_test
 from math import sqrt
@@ -25,6 +25,26 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
+        self._SBX_eta = self.settings['SBX_eta']
+        self._mutation_bins = np.cumsum([self.settings['probability_gaussian'],
+                                        self.settings['probability_random_uniform']
+        ])
+        self._crossover_bins = np.cumsum([self.settings['probability_SBX'],
+                                         self.settings['probability_SPBX']
+        ])
+        self._SPBX_type = self.settings['SPBX_type'].lower()
+        self._mutation_rate = self.settings['mutation_rate']
+
+        # Determine size of next gen based off selection type
+        self._next_gen_size = None
+        if self.settings['selection_type'].lower() == 'plus':
+            self._next_gen_size = self.settings['num_parents'] + self.settings['num_offspring']
+        elif self.settings['selection_type'].lower() == 'comma':
+            self._next_gen_size = self.settings['num_offspring']
+        else:
+            raise Exception('Selection type "{}" is invalid'.format(self.settings['selection_type']))
+
+        
         self.board_size = settings['board_size']
         self.border = (10, 10, 10, 10)  # Left, Top, Right, Bottom
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
@@ -35,7 +55,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.width = self.snake_widget_width + 700 + self.border[0] + self.border[2]
         self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
         
-        individuals = [Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture']) for _ in range(self.settings['population_size'])]
+        individuals: List[Individual] = []
+
+        for _ in range(self.settings['population_size']):
+            individual = Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture'],
+                              hidden_activation=self.settings['hidden_layer_activation'],
+                              output_activation=self.settings['output_layer_activation'],
+                              lifespan=self.settings['lifespan'])
+            individuals.append(individual)
+
         self.best_fitness = 0
         self.best_score = 0
 
@@ -57,8 +85,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.population = Population(individuals)
 
 
-        # snake = load_snake('test_del3', 'best_ind348')
-        # snake = load_snake('test_del2', 'best_ind73')
+        # snake = load_snake('1_0_MPL_500_1500', 'best_ind350')
+        # # snake = load_snake('test_del2', 'best_ind73')
         # snake = Snake((20,20), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
         #               apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
         # self.population.individuals[0] = snake
@@ -120,15 +148,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self._current_individual += 1
             
             # Next generation
-            if (self.current_generation > 0 and self._current_individual == settings['population_size'] + 1500) or\
+            if (self.current_generation > 0 and self._current_individual == self._next_gen_size) or\
                 (self.current_generation == 0 and self._current_individual == settings['population_size']):
-            # if self._current_individual == settings['population_size']:
-                print('=== 1|0 mu + lambda (500, 1500) ===')
+                print('=== 1|0 mu (eta 100, life 5) + lambda (500, 1500) ===')
                 print('======================= Gneration {} ======================='.format(self.current_generation))
                 print('----Max fitness:', self.population.fittest_individual.fitness)
                 print('----Best Score:', self.population.fittest_individual.score)
                 print('----Average fitness:', self.population.average_fitness)
-                save_snake('1_0_MPL_500_1500', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
+                save_snake('1|0_MPL_500_1500_eta100_life5', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
                 self.next_generation()
             else:
                 
@@ -142,132 +169,151 @@ class MainWindow(QtWidgets.QMainWindow):
         self._increment_generation()
         self._current_individual = 0
 
-        # next_pop: List[Snake] = self.population.individuals[:]
-
-        # Decode chromosome and calculate fitness
+        # Calculate fitness of individuals
         for individual in self.population.individuals:
-            # individual.decode_chromosome()
             individual.calculate_fitness()
 
-        save_stats(self.population, r'C:\Users\wilkerso\dev\SnakeAI\stats', '1_0_MPL_500_1500')
+        save_stats(self.population, r'C:\Users\wilkerso\dev\SnakeAI\stats', '1_0_MPL_500_1500_eta100_life5')
         
         self.population.individuals = elitism_selection(self.population, self.settings['population_size'])
         
         random.shuffle(self.population.individuals)
         next_pop: List[Snake] = []
-        for individual in self.population.individuals:
-            params = individual.network.params
-            board_size = individual.board_size
-            hidden_layer_architecture = individual.hidden_layer_architecture
-            start_pos = individual.start_pos
-            apple_seed = individual.apple_seed
-            starting_direction = individual.starting_direction
-            #@TODO: remove the seed, start pos and direction
-            s = Snake(board_size, chromosome=params, hidden_layer_architecture=hidden_layer_architecture)#,
-                    #   start_pos=start_pos, starting_direction=starting_direction, apple_seed=apple_seed)
-            next_pop.append(s)
 
-        # Get best individuals from current population
-        # best_from_pop = elitism_selection(self.population, self.settings['num_elitism'])
-        # elite = []
-        # for best in best_from_pop:
+        # parents + offspring selection type
+        if self.settings['selection_type'].lower() == 'plus':
+            # Decrement lifespan
+            for individual in self.population.individuals:
+                individual.lifespan -= 1
 
-        #     chromosome = best.network.params
-        #     copy = Snake(best.board_size, chromosome=chromosome, hidden_layer_architecture=best.hidden_layer_architecture)
-        #                  #apple_seed=best.apple_seed, starting_direction=best.starting_direction, start_pos=best.start_pos)
-        #     elite.append(copy)
-        # next_pop.extend(elite)
+            for individual in self.population.individuals:
+                params = individual.network.params
+                board_size = individual.board_size
+                hidden_layer_architecture = individual.hidden_layer_architecture
+                hidden_activation = individual.hidden_activation
+                output_activation = individual.output_activation
+                lifespan = individual.lifespan
 
-        # while len(next_pop) < self.settings['population_size']:
-        while len(next_pop) < settings['population_size'] + 1500:
-            # p1, p2 = tournament_selection(self.population, 2, 4)
+                start_pos = individual.start_pos
+                apple_seed = individual.apple_seed
+                starting_direction = individual.starting_direction
+                #@TODO: remove the seed, start pos and direction
+                if lifespan > 0:
+                    s = Snake(board_size, chromosome=params, hidden_layer_architecture=hidden_layer_architecture,
+                            hidden_activation=hidden_activation, output_activation=output_activation,
+                            lifespan=lifespan)#,
+                            #   start_pos=start_pos, starting_direction=starting_direction, apple_seed=apple_seed)
+                    next_pop.append(s)
+
+
+        while len(next_pop) < self._next_gen_size:
             p1, p2 = roulette_wheel_selection(self.population, 2)
-            mutation_rate = 0.05
 
-            # L = len(p1.network.params) // 2
             L = len(p1.network.layer_nodes)
-            # c1_chromosome = {}
-            # c2_chromosome = {}
             c1_params = {}
             c2_params = {}
 
             # Each W_l and b_l are treated as their own chromosome.
             # Because of this I need to perform crossover/mutation on each chromosome between parents
             for l in range(1, L):
-                # W_l crossover
-                p1_W_l = p1.network.params['W' + str(l)]  # p1_W_l = p1.chromosome['W' + str(l)]
+                p1_W_l = p1.network.params['W' + str(l)]
                 p2_W_l = p2.network.params['W' + str(l)]  
                 p1_b_l = p1.network.params['b' + str(l)]
                 p2_b_l = p2.network.params['b' + str(l)]
 
-                # c1_W_l, c2_W_l = single_row_binary_crossover(p1_W_l, p2_W_l)
-                c1_W_l, c2_W_l = None, None
-                c1_b_l, c2_b_l = None, None
-                # SBX
-                if random.random() < 0.5:
-                    c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 1)
-                    c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 1)
-                # Single row
-                else:
-                    c1_W_l, c2_W_l = single_point_binary_crossover(p1_W_l, p2_W_l, major='r')
-                    c1_b_l, c2_b_l = single_point_binary_crossover(p1_b_l, p2_b_l, major='r')
+                # Crossover
+                # @NOTE: I am choosing to perform the same type of crossover on the weights and the bias.
+                c1_W_l, c2_W_l, c1_b_l, c2_b_l = self._crossover(p1_W_l, p2_W_l, p1_b_l, p2_b_l)
 
-                # c1_W_l, c2_W_l = SBX(p1_W_l, p2_W_l, 100)
-                # c1_W_l, c2_W_l = uniform_crossover_test(p1_W_l, p2_W_l)
-                # c1_W_l, c2_W_l = single_point_binary_crossover(p1_W_l, p2_W_l)
+                # Mutation
+                # @NOTE: I am choosing to perform the same type of mutation on the weights and the bias.
+                self._mutation(c1_W_l, c2_W_l, c1_b_l, c2_b_l)
+
+                # Assign children from crossover/mutation
                 c1_params['W' + str(l)] = c1_W_l
                 c2_params['W' + str(l)] = c2_W_l
-
-                # b_l crossover
-                
-                # c1_b_l, c2_b_l = single_row_binary_crossover(p1_b_l, p2_b_l)
-                # c1_b_l, c2_b_l = SBX(p1_b_l, p2_b_l, 100)
-                # c1_b_l, c2_b_l = uniform_crossover_test(p1_b_l, p2_b_l)
-                # c1_b_l, c2_b_l = single_point_binary_crossover(p1_b_l, p2_b_l)
                 c1_params['b' + str(l)] = c1_b_l
                 c2_params['b' + str(l)] = c2_b_l
-                # c1_params['b' + str(l)] = p1_b_l
-                # c2_params['b' + str(l)] = p2_b_l
 
-                scale = .2
-                # Mutate child weights
-                gaussian_mutation(c1_params['W' + str(l)], mutation_rate, scale=scale)
-                gaussian_mutation(c2_params['W' + str(l)], mutation_rate, scale=scale)
-
-                # Mutate child bias
-                gaussian_mutation(c1_params['b' + str(l)], mutation_rate, scale=scale)
-                gaussian_mutation(c2_params['b' + str(l)], mutation_rate, scale=scale)
-
-                # Clip
+                # Clip to [-1, 1]
                 np.clip(c1_params['W' + str(l)], -1, 1, out=c1_params['W' + str(l)])
                 np.clip(c2_params['W' + str(l)], -1, 1, out=c2_params['W' + str(l)])
                 np.clip(c1_params['b' + str(l)], -1, 1, out=c1_params['b' + str(l)])
                 np.clip(c2_params['b' + str(l)], -1, 1, out=c2_params['b' + str(l)])
 
             # Create children from chromosomes generated above
-            c1 = Snake(p1.board_size, chromosome=c1_params, hidden_layer_architecture=p1.hidden_layer_architecture)
-            c2 = Snake(p2.board_size, chromosome=c2_params, hidden_layer_architecture=p2.hidden_layer_architecture)
+            c1 = Snake(p1.board_size, chromosome=c1_params, hidden_layer_architecture=p1.hidden_layer_architecture,
+                       hidden_activation=p1.hidden_activation, output_activation=p1.output_activation,
+                       lifespan=self.settings['lifespan'])
+            c2 = Snake(p2.board_size, chromosome=c2_params, hidden_layer_architecture=p2.hidden_layer_architecture,
+                       hidden_activation=p2.hidden_activation, output_activation=p2.output_activation,
+                       lifespan=self.settings['lifespan'])
 
-            # Decode the chromosomes to get the network weights and bias filled out
-            # @TODO: might just be able to do this in teh update
-            # c1.decode_chromosome()
-            # c2.decode_chromosome()
-            # c1.encode_chromosome()
-            # c2.encode_chromosome()
-
+            # Add children to the next generation
             next_pop.extend([c1, c2])
         
         # Set the next generation
         random.shuffle(next_pop)
         self.population.individuals = next_pop
 
-        # for individual in self.population.individuals:
-        #     individual.encode_chromosome()
-
-
     def _increment_generation(self):
         self.current_generation += 1
         self.ga_window.current_generation_label.setText(str(self.current_generation + 1))
+
+    def _crossover(self, parent1_weights: np.ndarray, parent2_weights: np.ndarray,
+                   parent1_bias: np.ndarray, parent2_bias: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        rand_crossover = random.random()
+        crossover_bucket = np.digitize(rand_crossover, self._crossover_bins)
+        child1_weights, child2_weights = None, None
+        child1_bias, child2_bias = None, None
+
+        # SBX
+        if crossover_bucket == 0:
+            child1_weights, child2_weights = SBX(parent1_weights, parent2_weights, self._SBX_eta)
+            child1_bias, child2_bias =  SBX(parent1_bias, parent2_bias, self._SBX_eta)
+
+        # Single point binary crossover (SPBX)
+        elif crossover_bucket == 1:
+            child1_weights, child2_weights = single_point_binary_crossover(parent1_weights, parent2_weights, major=self._SPBX_type)
+            child1_bias, child2_bias =  single_point_binary_crossover(parent1_bias, parent2_bias, major=self._SPBX_type)
+        
+        else:
+            raise Exception('Unable to determine valid crossover based off probabilities')
+
+        return child1_weights, child2_weights, child1_bias, child2_bias
+
+    def _mutation(self, child1_weights: np.ndarray, child2_weights: np.ndarray,
+                  child1_bias: np.ndarray, child2_bias: np.ndarray) -> None:
+        scale = .2
+        rand_mutation = random.random()
+        mutation_bucket = np.digitize(rand_mutation, self._mutation_bins)
+
+        mutation_rate = self._mutation_rate
+        if self.settings['mutation_rate_type'].lower() == 'decaying':
+            mutation_rate = mutation_rate / sqrt(self.current_generation + 1)
+
+        # Gaussian
+        if mutation_bucket == 0:
+            # Mutate weights
+            gaussian_mutation(child1_weights, mutation_rate, scale=scale)
+            gaussian_mutation(child2_weights, mutation_rate, scale=scale)
+
+            # Mutate bias
+            gaussian_mutation(child1_bias, mutation_rate, scale=scale)
+            gaussian_mutation(child2_bias, mutation_rate, scale=scale)
+        
+        # Uniform random
+        elif mutation_bucket == 1:
+            # Mutate weights
+            random_uniform_mutation(child1_weights, mutation_rate, -1, 1)
+            random_uniform_mutation(child2_weights, mutation_rate, -1, 1)
+
+            # Mutate bias
+            random_uniform_mutation(child1_bias, mutation_rate, -1, 1)
+            random_uniform_mutation(child2_bias, mutation_rate, -1, 1)
+
+        else:
+            raise Exception('Unable to determine valid mutation based off probabilities.')
 
 
 class GeneticAlgoWidget(QtWidgets.QWidget):
@@ -306,20 +352,24 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         self._create_label_widget_in_grid('Selection Type:', font_bold, grid, 1, 2, TOP_LEFT)
         self._create_label_widget_in_grid(selection_type, font, grid, 1, 3, TOP_LEFT)
         # Crossover type
-        crossover_type = settings['crossover_type']
+        prob_SBX = settings['probability_SBX']
+        prob_SPBX = settings['probability_SPBX']
+        crossover_type = '{:.0f}% SBX, {:.0f}% SPBX'.format(prob_SBX*100, prob_SPBX*100)
         self._create_label_widget_in_grid('Crossover Type:', font_bold, grid, 2, 2, TOP_LEFT)
         self._create_label_widget_in_grid(crossover_type, font, grid, 2, 3, TOP_LEFT)
-        # Elitism
-        num_elitsm = str(settings['num_elitism'])
-        self._create_label_widget_in_grid('Number of Elitism:', font_bold, grid, 3, 2, TOP_LEFT)
-        self._create_label_widget_in_grid(num_elitsm, font, grid, 3, 3, TOP_LEFT)
+        # # Elitism
+        # num_elitsm = str(settings['num_elitism'])
+        # self._create_label_widget_in_grid('Number of Elitism:', font_bold, grid, 3, 2, TOP_LEFT)
+        # self._create_label_widget_in_grid(num_elitsm, font, grid, 3, 3, TOP_LEFT)
         # Mutation type
-        mutation_type = settings['mutation_type'].lower().capitalize()
+        prob_gaussian = settings['probability_gaussian']
+        prob_uniform = settings['probability_random_uniform']
+        mutation_type = '{:.0f}% Gaussian, {:.0f}% Random Uniform'.format(prob_gaussian*100, prob_uniform*100)
         self._create_label_widget_in_grid('Mutation Type:', font_bold, grid, 4, 2, TOP_LEFT)
         self._create_label_widget_in_grid(mutation_type, font, grid, 4, 3, TOP_LEFT)
         # Mutation rate
         self._create_label_widget_in_grid('Mutation Rate:', font_bold, grid, 5, 2, TOP_LEFT)
-        mutation_rate_percent = '{:.2f}%'.format(settings['mutation_rate'] * 100)
+        mutation_rate_percent = '{:.0f}%'.format(settings['mutation_rate'] * 100)
         mutation_rate_type = settings['mutation_rate_type'].lower().capitalize()
         mutation_rate = mutation_rate_percent + ' + ' + mutation_rate_type
         self._create_label_widget_in_grid(mutation_rate, font, grid, 5, 3, TOP_LEFT)
