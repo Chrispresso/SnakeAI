@@ -13,6 +13,7 @@ from genetic_algorithm.mutation import gaussian_mutation, random_uniform_mutatio
 from genetic_algorithm.crossover import simulated_binary_crossover as SBX
 from genetic_algorithm.crossover import uniform_binary_crossover, single_point_binary_crossover, single_row_binary_crossover, uniform_crossover_test
 from math import sqrt
+from decimal import Decimal
 import random
 import csv
 
@@ -24,10 +25,10 @@ SQUARE_SIZE = (45, 45)
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, settings):
         super().__init__()
-        self.setAutoFillBackground(True)
-        palette = self.palette()
-        palette.setColor(self.backgroundRole(), QtGui.QColor(145, 138, 119))
-        self.setPalette(palette)
+        # self.setAutoFillBackground(True)
+        # palette = self.palette()
+        # palette.setColor(self.backgroundRole(), QtGui.QColor(145, 138, 119))
+        # self.setPalette(palette)
         self.settings = settings
         self._SBX_eta = self.settings['SBX_eta']
         self._mutation_bins = np.cumsum([self.settings['probability_gaussian'],
@@ -55,7 +56,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.snake_widget_height = SQUARE_SIZE[1] * self.board_size[1]
 
         # Allows padding of the other elements even if we need to restrict the size of the play area
-        self._snake_widget_width = max(self.snake_widget_width, 600)
+        self._snake_widget_width = max(self.snake_widget_width, 620)
         self._snake_widget_height = max(self.snake_widget_height, 600)
 
         self.top = 150
@@ -108,9 +109,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
         # self.timer.setInterval(10)
-        self.timer.start(1000./1000)
+        self.timer.start(1000./10)
 
-        # self.show()
+        self.show()
         # self.update()
 
     def init_window(self):
@@ -152,7 +153,7 @@ class MainWindow(QtWidgets.QMainWindow):
             print(self._current_individual, fitness)
             if fitness > self.best_fitness:
                 self.best_fitness = fitness
-                self.ga_window.best_fitness_label.setText(str(fitness))
+                self.ga_window.best_fitness_label.setText('{:.2E}'.format(Decimal(fitness)))
 
             self._current_individual += 1
             
@@ -168,7 +169,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.next_generation()
             else:
                 
-                self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, settings['population_size']))
+                current_pop = self.settings['num_parents'] if self.current_generation == 0 else self._next_gen_size
+                self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, current_pop))
 
             self.snake = self.population.individuals[self._current_individual]
             self.snake_widget_window.snake = self.snake
@@ -182,7 +184,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for individual in self.population.individuals:
             individual.calculate_fitness()
 
-        save_stats(self.population, r'C:\Users\wilkerso\dev\SnakeAI\stats', '1_0_MPL_500_1500_eta100_life_inf')
+        save_stats(self.population, r'C:\Users\cjwil\dev\SnakeAI\stats', '1_0_MPL_500_1500_eta100_life_inf')
         
         self.population.individuals = elitism_selection(self.population, self.settings['population_size'])
         
@@ -338,72 +340,100 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         grid.setColumnStretch(1, 5)
         TOP_LEFT = Qt.AlignLeft | Qt.AlignVCenter
 
+        LABEL_COL = 0
+        STATS_COL = 1
+        ROW = 0
+
         #### Generation stuff ####
         # Generation
-        self._create_label_widget_in_grid('Generation:', font_bold, grid, 0, 0, TOP_LEFT)
+        self._create_label_widget_in_grid('Generation:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
         self.current_generation_label = self._create_label_widget('1', font)
-        grid.addWidget(self.current_generation_label, 0, 1, TOP_LEFT)
+        grid.addWidget(self.current_generation_label, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Current individual
-        self._create_label_widget_in_grid('Individual:', font_bold, grid, 1, 0, TOP_LEFT)
-        self.current_individual_label = self._create_label_widget('1/{}'.format(settings['population_size']), font)
-        grid.addWidget(self.current_individual_label, 1, 1, TOP_LEFT)
+        self._create_label_widget_in_grid('Individual:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self.current_individual_label = self._create_label_widget('1/{}'.format(settings['num_parents']), font)
+        grid.addWidget(self.current_individual_label, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Best score
-        self._create_label_widget_in_grid('Best Score:', font_bold, grid, 2, 0, TOP_LEFT)
+        self._create_label_widget_in_grid('Best Score:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
         self.best_score_label = self._create_label_widget('0', font)
-        grid.addWidget(self.best_score_label, 2, 1, TOP_LEFT)
+        grid.addWidget(self.best_score_label, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Best fitness
-        self._create_label_widget_in_grid('Best Fitness:', font_bold, grid, 3, 0, TOP_LEFT)
-        self.best_fitness_label = self._create_label_widget('10', font)
-        grid.addWidget(self.best_fitness_label, 3, 1, TOP_LEFT)
+        self._create_label_widget_in_grid('Best Fitness:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self.best_fitness_label = self._create_label_widget('{:.2E}'.format(Decimal('0.1')), font)
+        grid.addWidget(self.best_fitness_label, ROW, STATS_COL, TOP_LEFT)
+
+        ROW = 0
+        LABEL_COL, STATS_COL = LABEL_COL + 4, STATS_COL + 4
 
         #### GA setting ####
-        self._create_label_widget_in_grid('GA Settings', font_bold, grid, 0, 2, TOP_LEFT)
+        self._create_label_widget_in_grid('GA Settings', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        ROW += 1
+
         # Selection type
         selection_type = ' '.join([word.lower().capitalize() for word in settings['selection_type'].split('_')])
-        self._create_label_widget_in_grid('Selection Type:', font_bold, grid, 1, 2, TOP_LEFT)
-        self._create_label_widget_in_grid(selection_type, font, grid, 1, 3, TOP_LEFT)
+        self._create_label_widget_in_grid('Selection Type:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self._create_label_widget_in_grid(selection_type, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Crossover type
         prob_SBX = settings['probability_SBX']
         prob_SPBX = settings['probability_SPBX']
         crossover_type = '{:.0f}% SBX\n{:.0f}% SPBX'.format(prob_SBX*100, prob_SPBX*100)
-        self._create_label_widget_in_grid('Crossover Type:', font_bold, grid, 2, 2, TOP_LEFT)
-        self._create_label_widget_in_grid(crossover_type, font, grid, 2, 3, TOP_LEFT)
-        # # Elitism
-        # num_elitsm = str(settings['num_elitism'])
-        # self._create_label_widget_in_grid('Number of Elitism:', font_bold, grid, 3, 2, TOP_LEFT)
-        # self._create_label_widget_in_grid(num_elitsm, font, grid, 3, 3, TOP_LEFT)
+        self._create_label_widget_in_grid('Crossover Type:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self._create_label_widget_in_grid(crossover_type, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Mutation type
         prob_gaussian = settings['probability_gaussian']
         prob_uniform = settings['probability_random_uniform']
-        mutation_type = '{:.0f}% Gaussian\n{:.0f}% Random Uniform'.format(prob_gaussian*100, prob_uniform*100)
-        self._create_label_widget_in_grid('Mutation Type:', font_bold, grid, 3, 2, TOP_LEFT)
-        self._create_label_widget_in_grid(mutation_type, font, grid, 3, 3, TOP_LEFT)
+        mutation_type = '{:.0f}% Gaussian\n{:.0f}% Uniform'.format(prob_gaussian*100, prob_uniform*100)
+        self._create_label_widget_in_grid('Mutation Type:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self._create_label_widget_in_grid(mutation_type, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Mutation rate
-        self._create_label_widget_in_grid('Mutation Rate:', font_bold, grid, 4, 2, TOP_LEFT)
+        self._create_label_widget_in_grid('Mutation Rate:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
         mutation_rate_percent = '{:.0f}%'.format(settings['mutation_rate'] * 100)
         mutation_rate_type = settings['mutation_rate_type'].lower().capitalize()
         mutation_rate = mutation_rate_percent + ' + ' + mutation_rate_type
-        self._create_label_widget_in_grid(mutation_rate, font, grid, 4, 3, TOP_LEFT)
+        self._create_label_widget_in_grid(mutation_rate, font, grid, ROW, STATS_COL, TOP_LEFT)
+
+        ROW = 0
+        LABEL_COL, STATS_COL = LABEL_COL + 2, STATS_COL + 2
 
         #### NN setting ####
-        self._create_label_widget_in_grid('NN Settings', font_bold, grid, 0, 4, TOP_LEFT)
+        self._create_label_widget_in_grid('NN Settings', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        ROW += 1
+
         # Hidden layer activation
         hidden_layer_activation = ' '.join([word.lower().capitalize() for word in settings['hidden_layer_activation'].split('_')])
-        self._create_label_widget_in_grid('Hidden Activation:', font_bold, grid, 1, 4, TOP_LEFT)
-        self._create_label_widget_in_grid(hidden_layer_activation, font, grid, 1, 5, TOP_LEFT)
+        self._create_label_widget_in_grid('Hidden Activation:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self._create_label_widget_in_grid(hidden_layer_activation, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Output layer activation
         output_layer_activation = ' '.join([word.lower().capitalize() for word in settings['output_layer_activation'].split('_')])
-        self._create_label_widget_in_grid('Output Activation:', font_bold, grid, 2, 4, TOP_LEFT)
-        self._create_label_widget_in_grid(output_layer_activation, font, grid, 2, 5, TOP_LEFT)
+        self._create_label_widget_in_grid('Output Activation:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self._create_label_widget_in_grid(output_layer_activation, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Network architecture
         network_architecture = '[{}, {}, 4]'.format(settings['vision_type'] * 3 + 4 + 4,
                                                     ', '.join([str(num_neurons) for num_neurons in settings['hidden_network_architecture']]))
-        self._create_label_widget_in_grid('NN Architecture:', font_bold, grid, 3, 4, TOP_LEFT)
-        self._create_label_widget_in_grid(network_architecture, font, grid, 3, 5, TOP_LEFT)
+        self._create_label_widget_in_grid('NN Architecture:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self._create_label_widget_in_grid(network_architecture, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
         # Snake vision
         snake_vision = str(settings['vision_type']) + ' directions'
-        self._create_label_widget_in_grid('Snake Vision:', font_bold, grid, 4, 4, TOP_LEFT)
-        self._create_label_widget_in_grid(snake_vision, font, grid, 4, 5, TOP_LEFT)
+        self._create_label_widget_in_grid('Snake Vision:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        self._create_label_widget_in_grid(snake_vision, font, grid, ROW, STATS_COL, TOP_LEFT)
 
         self.setLayout(grid)
         
