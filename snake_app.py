@@ -17,13 +17,17 @@ import random
 import csv
 
 
-SQUARE_SIZE = (12, 12)
+SQUARE_SIZE = (45, 45)
 
 
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, settings):
         super().__init__()
+        self.setAutoFillBackground(True)
+        palette = self.palette()
+        palette.setColor(self.backgroundRole(), QtGui.QColor(145, 138, 119))
+        self.setPalette(palette)
         self.settings = settings
         self._SBX_eta = self.settings['SBX_eta']
         self._mutation_bins = np.cumsum([self.settings['probability_gaussian'],
@@ -50,10 +54,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
         self.snake_widget_height = SQUARE_SIZE[1] * self.board_size[1]
 
+        # Allows padding of the other elements even if we need to restrict the size of the play area
+        self._snake_widget_width = max(self.snake_widget_width, 600)
+        self._snake_widget_height = max(self.snake_widget_height, 600)
+
         self.top = 150
         self.left = 150
-        self.width = self.snake_widget_width + 700 + self.border[0] + self.border[2]
-        self.height = self.snake_widget_height + self.border[1] + self.border[3] + 200
+        self.width = self._snake_widget_width + 700 + self.border[0] + self.border[2]
+        self.height = self._snake_widget_height + self.border[1] + self.border[3] + 200
         
         individuals: List[Individual] = []
 
@@ -61,7 +69,8 @@ class MainWindow(QtWidgets.QMainWindow):
             individual = Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture'],
                               hidden_activation=self.settings['hidden_layer_activation'],
                               output_activation=self.settings['output_layer_activation'],
-                              lifespan=self.settings['lifespan'])
+                              lifespan=self.settings['lifespan'],
+                              apple_and_self_vision=self.settings['apple_and_self_vision'])
             individuals.append(individual)
 
         self.best_fitness = 0
@@ -85,9 +94,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.population = Population(individuals)
 
 
-        # snake = load_snake('1_0_MPL_500_1500', 'best_ind350')
+        # snake = load_snake('/home/chris/dev/SnakeAI/1_dist_MPL_500_1500_eta100', 'best_ind1041', settings)
         # # snake = load_snake('test_del2', 'best_ind73')
-        # snake = Snake((20,20), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
+        # snake = Snake((10, 10), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
         #               apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
         # self.population.individuals[0] = snake
         self.snake = self.population.individuals[self._current_individual]
@@ -112,7 +121,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create the Neural Network window
         self.nn_viz_window = NeuralNetworkViz(self.centralWidget, self.snake)
-        self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self.snake_widget_height + self.border[1] + self.border[3] + 200))
+        self.nn_viz_window.setGeometry(QtCore.QRect(0, 0, 600, self._snake_widget_height + self.border[1] + self.border[3] + 200))
         self.nn_viz_window.setObjectName('nn_viz_window')
 
         # Create SnakeWidget window
@@ -122,7 +131,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Genetic Algorithm Stats window
         self.ga_window = GeneticAlgoWidget(self.centralWidget, settings)
-        self.ga_window.setGeometry(QtCore.QRect(600, self.border[1] + self.border[3] + self.snake_widget_height, self.snake_widget_width + self.border[0] + self.border[2] + 50, 200))
+        self.ga_window.setGeometry(QtCore.QRect(600, self.border[1] + self.border[3] + self._snake_widget_height, self._snake_widget_width + self.border[0] + self.border[2] + 50, 200))
         self.ga_window.setObjectName('ga_window')
 
 
@@ -150,12 +159,12 @@ class MainWindow(QtWidgets.QMainWindow):
             # Next generation
             if (self.current_generation > 0 and self._current_individual == self._next_gen_size) or\
                 (self.current_generation == 0 and self._current_individual == settings['population_size']):
-                print('=== 1|0 mu (eta 100, life 5) + lambda (500, 1500) ===')
+                print(self.settings)
                 print('======================= Gneration {} ======================='.format(self.current_generation))
                 print('----Max fitness:', self.population.fittest_individual.fitness)
                 print('----Best Score:', self.population.fittest_individual.score)
                 print('----Average fitness:', self.population.average_fitness)
-                save_snake('1|0_MPL_500_1500_eta100_life5', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
+                save_snake('1|0_MPL_500_1500_eta100_life_inf', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
                 self.next_generation()
             else:
                 
@@ -173,14 +182,14 @@ class MainWindow(QtWidgets.QMainWindow):
         for individual in self.population.individuals:
             individual.calculate_fitness()
 
-        save_stats(self.population, r'C:\Users\wilkerso\dev\SnakeAI\stats', '1_0_MPL_500_1500_eta100_life5')
+        save_stats(self.population, r'C:\Users\wilkerso\dev\SnakeAI\stats', '1_0_MPL_500_1500_eta100_life_inf')
         
         self.population.individuals = elitism_selection(self.population, self.settings['population_size'])
         
         random.shuffle(self.population.individuals)
         next_pop: List[Snake] = []
 
-        # parents + offspring selection type
+        # parents + offspring selection type ('plus')
         if self.settings['selection_type'].lower() == 'plus':
             # Decrement lifespan
             for individual in self.population.individuals:
@@ -193,16 +202,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 hidden_activation = individual.hidden_activation
                 output_activation = individual.output_activation
                 lifespan = individual.lifespan
+                apple_and_self_vision = individual.apple_and_self_vision
 
                 start_pos = individual.start_pos
                 apple_seed = individual.apple_seed
                 starting_direction = individual.starting_direction
-                #@TODO: remove the seed, start pos and direction
+
+                # If the individual is still alive, they survive
                 if lifespan > 0:
                     s = Snake(board_size, chromosome=params, hidden_layer_architecture=hidden_layer_architecture,
                             hidden_activation=hidden_activation, output_activation=output_activation,
-                            lifespan=lifespan)#,
-                            #   start_pos=start_pos, starting_direction=starting_direction, apple_seed=apple_seed)
+                            lifespan=lifespan, apple_and_self_vision=apple_and_self_vision)#,
                     next_pop.append(s)
 
 
@@ -319,6 +329,7 @@ class MainWindow(QtWidgets.QMainWindow):
 class GeneticAlgoWidget(QtWidgets.QWidget):
     def __init__(self, parent, settings):
         super().__init__(parent)
+
         font = QtGui.QFont('Times', 10, QtGui.QFont.Normal)
         font_bold = QtGui.QFont('Times', 13, QtGui.QFont.Bold)
 
@@ -354,7 +365,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         # Crossover type
         prob_SBX = settings['probability_SBX']
         prob_SPBX = settings['probability_SPBX']
-        crossover_type = '{:.0f}% SBX, {:.0f}% SPBX'.format(prob_SBX*100, prob_SPBX*100)
+        crossover_type = '{:.0f}% SBX\n{:.0f}% SPBX'.format(prob_SBX*100, prob_SPBX*100)
         self._create_label_widget_in_grid('Crossover Type:', font_bold, grid, 2, 2, TOP_LEFT)
         self._create_label_widget_in_grid(crossover_type, font, grid, 2, 3, TOP_LEFT)
         # # Elitism
@@ -364,15 +375,15 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         # Mutation type
         prob_gaussian = settings['probability_gaussian']
         prob_uniform = settings['probability_random_uniform']
-        mutation_type = '{:.0f}% Gaussian, {:.0f}% Random Uniform'.format(prob_gaussian*100, prob_uniform*100)
-        self._create_label_widget_in_grid('Mutation Type:', font_bold, grid, 4, 2, TOP_LEFT)
-        self._create_label_widget_in_grid(mutation_type, font, grid, 4, 3, TOP_LEFT)
+        mutation_type = '{:.0f}% Gaussian\n{:.0f}% Random Uniform'.format(prob_gaussian*100, prob_uniform*100)
+        self._create_label_widget_in_grid('Mutation Type:', font_bold, grid, 3, 2, TOP_LEFT)
+        self._create_label_widget_in_grid(mutation_type, font, grid, 3, 3, TOP_LEFT)
         # Mutation rate
-        self._create_label_widget_in_grid('Mutation Rate:', font_bold, grid, 5, 2, TOP_LEFT)
+        self._create_label_widget_in_grid('Mutation Rate:', font_bold, grid, 4, 2, TOP_LEFT)
         mutation_rate_percent = '{:.0f}%'.format(settings['mutation_rate'] * 100)
         mutation_rate_type = settings['mutation_rate_type'].lower().capitalize()
         mutation_rate = mutation_rate_percent + ' + ' + mutation_rate_type
-        self._create_label_widget_in_grid(mutation_rate, font, grid, 5, 3, TOP_LEFT)
+        self._create_label_widget_in_grid(mutation_rate, font, grid, 4, 3, TOP_LEFT)
 
         #### NN setting ####
         self._create_label_widget_in_grid('NN Settings', font_bold, grid, 0, 4, TOP_LEFT)

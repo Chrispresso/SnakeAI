@@ -25,9 +25,9 @@ settings = {
     # otherwise if it is decaying it will decrease as the number of generations increase
     'mutation_rate_type':          'static',   # Options are [static, decaying]
     # The probability that if a mutation occurs, it is gaussian
-    'probability_gaussian':        0.5,        # Values must be between [0.00, 1.00)
+    'probability_gaussian':        1.0,        # Values must be between [0.00, 1.00]
     # The probability that if a mutation occurs, it is random uniform
-    'probability_random_uniform':  0.5,        # Values must be between [0.00, 1.00)
+    'probability_random_uniform':  0.0,        # Values must be between [0.00, 1.00]
 
     ## Population ##
 
@@ -47,7 +47,7 @@ settings = {
     # Probability that when crossover occurs, it is single point binary crossover
     'probability_SPBX':            0.5,
     # Crossover selection type determines the way in which we select individuals for crossover
-    'crossover_selection_type':              'roulette_wheel',
+    'crossover_selection_type':    'roulette_wheel',
 
     ## Selection ##
 
@@ -60,7 +60,7 @@ settings = {
     #     Then the top num_parents will be chosen from (num_offspring + num_parents)
     # If selection_type == 'comma':
     #     Then the top num_parents will be chosen from (num_offspring)
-    # @NOTE: if the lifespan of the individual is 0, then it cannot be selected for the next generation
+    # @NOTE: if the lifespan of the individual is 1, then it cannot be selected for the next generation
     # If enough indivduals are unable to be selected for the next generation, new random ones will take their place.
     # @NOTE: If selection_type == 'comma' then lifespan is ignored.
     #   This is equivalent to lifespan = 1 in this case since the parents never make it to the new generation.
@@ -72,7 +72,12 @@ settings = {
     # This can be useful for allowing exploration. Imagine a top individual constantly being selected for crossover.
     # With a lifespan, after a number of generations, the individual will not be selected to participate in future
     # generations. This can allow for other individuals to have higher selective pressure than they previously did.
-    # @NOTE
-    'lifespan':                    5,     # Options are any positive integer or np.inf
+    # @NOTE this only matters if 'selecton_type' == 'plus'. If 'selection_type' == 'comma', then 'lifespan' is completely ignored.
+    'lifespan':                    np.inf,          # Options are any positive integer or np.inf (typed out as if it were a number, i.e. no quotes to make it a string)
+    # The type of vision the snake has when it sees itself or the apple.
+    # If the vision is binary, then the input into the Neural Network is 1 (can see) or 0 (cannot see).
+    # If the vision is distance, then the input into the Neural Network is 1.0/distance.
+    # 1.0/distance is used to keep values capped at 1.0 as a max.
+    'apple_and_self_vision':       'binary'    # Options are ['binary', 'distance'] 
 
 }

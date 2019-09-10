@@ -46,10 +46,12 @@ class Snake(Individual):
                  hidden_layer_architecture: Optional[List[int]] = [1123125, 9],
                  hidden_activation: Optional[ActivationFunction] = 'relu',
                  output_activation: Optional[ActivationFunction] = 'sigmoid',
-                 lifespan: Optional[Union[int, float]] = np.inf
+                 lifespan: Optional[Union[int, float]] = np.inf,
+                 apple_and_self_vision: Optional[str] = 'binary'
                  ):
 
         self.lifespan = lifespan
+        self.apple_and_self_vision = apple_and_self_vision.lower()
         self.score = 0  # Number of apples snake gets
         self._fitness = 0  # Overall fitness
         self._frames = 0  # Number of frames that the snake has been alive
@@ -212,26 +214,16 @@ class Snake(Individual):
         assert(total_distance != 0.0)
 
 
-
-        # Normalize where 0 is really far, 1 is really close
-        # @TODO: Will it matter that total_distance here can't be 1?
-        # @TODO: Could also change it to either:
-        #            total_distance += 1   or
-        #            normalize with distance as numerator
+        # @TODO: May need to adjust numerator in case of VISION_16 since step size isn't always going to be on a tile
         dist_to_wall = 1.0 / total_distance
-        # dist_to_apple = 1.0 / dist_to_apple
-        dist_to_apple = 1.0 if dist_to_apple != np.inf else 0.0
-        # dist_to_self = 1.0 / dist_to_self
-        dist_to_self = 1.0 if dist_to_self != np.inf else 0.0
-        # if dist_to_apple == np.inf:
-        #     dist_to_apple = 0.0
-        # else:
-        #     dist_to_apple = 1.0 / dist_to_apple
 
-        # if dist_to_self == np.inf:
-        #     dist_to_self = 0.0
-        # else:
-        #     dist_to_self = 1.0 / dist_to_self
+        if self.apple_and_self_vision == 'binary':
+            dist_to_apple = 1.0 if dist_to_apple != np.inf else 0.0
+            dist_to_self = 1.0 if dist_to_self != np.inf else 0.0
+
+        elif self.apple_and_self_vision == 'distance':
+            dist_to_apple = 1.0 / dist_to_apple
+            dist_to_self = 1.0 / dist_to_self
 
         vision = Vision(dist_to_wall, dist_to_apple, dist_to_self)
         drawable_vision = DrawableVision(wall_location, apple_location, self_location)
@@ -438,7 +430,7 @@ def save_snake(population_folder: str, individual_name: str, snake: Snake, setti
     constructor['initial_velocity'] = snake.initial_velocity
     constructor['starting_direction'] = snake.starting_direction
     snake_constructor_file = os.path.join(individual_dir, 'constructor_params.json')
-    print(constructor)
+
     # Save
     with open(snake_constructor_file, 'w', encoding='utf-8') as out:
         json.dump(constructor, out, sort_keys=True, indent=4)
@@ -485,6 +477,8 @@ def load_snake(population_folder: str, individual_name: str, settings: Optional[
                   starting_direction=constructor_params['starting_direction'],
                   hidden_layer_architecture=settings['hidden_network_architecture'],
                   hidden_activation=settings['hidden_layer_activation'],
-                  output_activation=settings['output_layer_activation']
+                  output_activation=settings['output_layer_activation'],
+                  lifespan=settings['lifespan'],
+                  apple_and_self_vision=settings['apple_and_self_vision']
                   )
     return snake
