@@ -66,13 +66,17 @@ class MainWindow(QtWidgets.QMainWindow):
         
         individuals: List[Individual] = []
 
-        for _ in range(self.settings['population_size']):
+        for _ in range(self.settings['num_parents'] - 1):
             individual = Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture'],
                               hidden_activation=self.settings['hidden_layer_activation'],
                               output_activation=self.settings['output_layer_activation'],
                               lifespan=self.settings['lifespan'],
                               apple_and_self_vision=self.settings['apple_and_self_vision'])
             individuals.append(individual)
+
+        snake = load_snake('/home/chrispresso/Downloads/1_0_MPL_500_1000_eta100', 'best_ind784', self.settings)
+        snake = Snake((50,50), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture)
+        individuals.append(snake)
 
         self.best_fitness = 0
         self.best_score = 0
@@ -95,7 +99,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.population = Population(individuals)
 
 
-        # snake = load_snake('/home/chris/dev/SnakeAI/1_dist_MPL_500_1500_eta100', 'best_ind1041', settings)
+        # 
         # # snake = load_snake('test_del2', 'best_ind73')
         # snake = Snake((10, 10), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
         #               apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
@@ -109,9 +113,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
         # self.timer.setInterval(10)
-        self.timer.start(1000./10)
+        self.timer.start(1000./1000)
 
-        self.show()
+        # self.show()
         # self.update()
 
     def init_window(self):
@@ -159,13 +163,13 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # Next generation
             if (self.current_generation > 0 and self._current_individual == self._next_gen_size) or\
-                (self.current_generation == 0 and self._current_individual == settings['population_size']):
+                (self.current_generation == 0 and self._current_individual == settings['num_parents']):
                 print(self.settings)
                 print('======================= Gneration {} ======================='.format(self.current_generation))
                 print('----Max fitness:', self.population.fittest_individual.fitness)
                 print('----Best Score:', self.population.fittest_individual.score)
                 print('----Average fitness:', self.population.average_fitness)
-                save_snake('1|0_MPL_500_1500_eta100_life_inf', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
+                save_snake('1_0_MPL_500_1000_eta100_life_inf', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
                 self.next_generation()
             else:
                 
@@ -184,9 +188,9 @@ class MainWindow(QtWidgets.QMainWindow):
         for individual in self.population.individuals:
             individual.calculate_fitness()
 
-        save_stats(self.population, r'C:\Users\cjwil\dev\SnakeAI\stats', '1_0_MPL_500_1500_eta100_life_inf')
+        save_stats(self.population, r'/home/chrispresso/dev/SnakeAI', '1_0_MPL_500_1000_eta100_life_inf')
         
-        self.population.individuals = elitism_selection(self.population, self.settings['population_size'])
+        self.population.individuals = elitism_selection(self.population, self.settings['num_parents'])
         
         random.shuffle(self.population.individuals)
         next_pop: List[Snake] = []
@@ -332,13 +336,13 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
     def __init__(self, parent, settings):
         super().__init__(parent)
 
-        font = QtGui.QFont('Times', 10, QtGui.QFont.Normal)
-        font_bold = QtGui.QFont('Times', 13, QtGui.QFont.Bold)
+        font = QtGui.QFont('Times', 11, QtGui.QFont.Normal)
+        font_bold = QtGui.QFont('Times', 11, QtGui.QFont.Bold)
 
         grid = QtWidgets.QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setColumnStretch(1, 5)
-        TOP_LEFT = Qt.AlignLeft | Qt.AlignVCenter
+        TOP_LEFT = Qt.AlignLeft | Qt.AlignTop
 
         LABEL_COL = 0
         STATS_COL = 1
@@ -369,7 +373,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         grid.addWidget(self.best_fitness_label, ROW, STATS_COL, TOP_LEFT)
 
         ROW = 0
-        LABEL_COL, STATS_COL = LABEL_COL + 4, STATS_COL + 4
+        LABEL_COL, STATS_COL = LABEL_COL + 2, STATS_COL + 2
 
         #### GA setting ####
         self._create_label_widget_in_grid('GA Settings', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
@@ -411,7 +415,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         self._create_label_widget_in_grid(lifespan, font, grid, ROW, STATS_COL, TOP_LEFT)
 
         ROW = 0
-        LABEL_COL, STATS_COL = LABEL_COL + 4, STATS_COL + 4
+        LABEL_COL, STATS_COL = LABEL_COL + 2, STATS_COL + 2
 
         #### NN setting ####
         self._create_label_widget_in_grid('NN Settings', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
@@ -446,6 +450,14 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         self._create_label_widget_in_grid('Apple/Self Vision:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
         apple_self_vision_type = settings['apple_and_self_vision'].lower()
         self._create_label_widget_in_grid(apple_self_vision_type, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
+
+        grid.setSpacing(0)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(3, 1)
+        grid.setColumnStretch(5, 1)
 
         self.setLayout(grid)
         
@@ -455,6 +467,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         label = QtWidgets.QLabel()
         label.setText(string_label)
         label.setFont(font)
+        label.setContentsMargins(0,0,0,0)
         return label
 
     def _create_label_widget_in_grid(self, string_label: str, font: QtGui.QFont, 
@@ -463,6 +476,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         label = QtWidgets.QLabel()
         label.setText(string_label)
         label.setFont(font)
+        label.setContentsMargins(0,0,0,0)
         grid.addWidget(label, row, col, alignment)
 
 

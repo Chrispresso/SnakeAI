@@ -29,11 +29,6 @@ settings = {
     # The probability that if a mutation occurs, it is random uniform
     'probability_random_uniform':  0.0,        # Values must be between [0.00, 1.00]
 
-    ## Population ##
-
-    # Number of individuals in the population
-    'population_size':             500,
-
     ## Crossover ##
     
     # eta related to SBX. Larger values create a distribution closer around the parents while smaller values venture further from them.
@@ -54,7 +49,7 @@ settings = {
     # Number of parents that will be used for reproducing
     'num_parents':                 500,
     # Number of offspring that will be created. Keep num_offspring >= num_parents
-    'num_offspring':               1500,
+    'num_offspring':               1000,
     # The selection type to use for the next generation.
     # If selection_type == 'plus':
     #     Then the top num_parents will be chosen from (num_offspring + num_parents)

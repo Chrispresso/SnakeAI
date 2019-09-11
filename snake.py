@@ -359,7 +359,8 @@ class Snake(Individual):
 
             self._frames_since_last_apple += 1
             #@TODO: MAybe make max number of a variable
-            if self._frames_since_last_apple > 120:
+            threshold = min(max(self.score * 75, 100), 750)
+            if self._frames_since_last_apple > 700:
                 self.is_alive = False
                 return False
 
