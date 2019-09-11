@@ -18,7 +18,7 @@ import random
 import csv
 
 
-SQUARE_SIZE = (45, 45)
+SQUARE_SIZE = (12, 12)
 
 
 
@@ -51,7 +51,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         
         self.board_size = settings['board_size']
-        self.border = (10, 10, 10, 10)  # Left, Top, Right, Bottom
+        self.border = (0, 10, 0, 10)  # Left, Top, Right, Bottom
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
         self.snake_widget_height = SQUARE_SIZE[1] * self.board_size[1]
 
@@ -131,8 +131,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.snake_widget_window.setObjectName('snake_widget_window')
 
         # Genetic Algorithm Stats window
-        self.ga_window = GeneticAlgoWidget(self.centralWidget, settings)
-        self.ga_window.setGeometry(QtCore.QRect(600, self.border[1] + self.border[3] + self._snake_widget_height, self._snake_widget_width + self.border[0] + self.border[2] + 50, 200))
+        self.ga_window = GeneticAlgoWidget(self.centralWidget, self.settings)
+        self.ga_window.setGeometry(QtCore.QRect(600, self.border[1] + self.border[3] + self.snake_widget_height, self._snake_widget_width + self.border[0] + self.border[2] + 50, 200-10))
         self.ga_window.setObjectName('ga_window')
 
 
@@ -403,9 +403,15 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         mutation_rate_type = settings['mutation_rate_type'].lower().capitalize()
         mutation_rate = mutation_rate_percent + ' + ' + mutation_rate_type
         self._create_label_widget_in_grid(mutation_rate, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
+        # Lifespan
+        self._create_label_widget_in_grid('Lifespan:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        lifespan = str(settings['lifespan']) if settings['lifespan'] != np.inf else 'infinite'
+        self._create_label_widget_in_grid(lifespan, font, grid, ROW, STATS_COL, TOP_LEFT)
 
         ROW = 0
-        LABEL_COL, STATS_COL = LABEL_COL + 2, STATS_COL + 2
+        LABEL_COL, STATS_COL = LABEL_COL + 4, STATS_COL + 4
 
         #### NN setting ####
         self._create_label_widget_in_grid('NN Settings', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
@@ -434,6 +440,12 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         snake_vision = str(settings['vision_type']) + ' directions'
         self._create_label_widget_in_grid('Snake Vision:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
         self._create_label_widget_in_grid(snake_vision, font, grid, ROW, STATS_COL, TOP_LEFT)
+        ROW += 1
+
+        # Snake/Apple vision type
+        self._create_label_widget_in_grid('Apple/Self Vision:', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
+        apple_self_vision_type = settings['apple_and_self_vision'].lower()
+        self._create_label_widget_in_grid(apple_self_vision_type, font, grid, ROW, STATS_COL, TOP_LEFT)
 
         self.setLayout(grid)
         

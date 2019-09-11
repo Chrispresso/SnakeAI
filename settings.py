@@ -2,7 +2,7 @@ import numpy as np
 
 
 settings = {
-    'board_size':                  (10, 10),
+    'board_size':                  (50, 50),
 
     #### Neural Network related stuff ####
 
