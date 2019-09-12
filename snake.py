@@ -360,7 +360,7 @@ class Snake(Individual):
             self._frames_since_last_apple += 1
             #@TODO: MAybe make max number of a variable
             threshold = min(max(self.score * 75, 100), 750)
-            if self._frames_since_last_apple > 700:
+            if self._frames_since_last_apple > 100:
                 self.is_alive = False
                 return False
 
@@ -447,13 +447,21 @@ def save_snake(population_folder: str, individual_name: str, snake: Snake, setti
         np.save(os.path.join(individual_dir, w_name), weights)
         np.save(os.path.join(individual_dir, b_name), bias)
 
-def load_snake(population_folder: str, individual_name: str, settings: Optional[Dict[str, Any]] = None) -> Snake:
+def load_snake(population_folder: str, individual_name: str, settings: Optional[Union[Dict[str, Any], str]] = None) -> Snake:
     if not settings:
         f = os.path.join(population_folder, 'settings.json')
         if not os.path.exists(f):
             raise Exception("settings needs to be passed as an argument if 'settings.json' does not exist under population folder")
         
         with open(f, 'r', encoding='utf-8') as fp:
+            settings = json.load(fp)
+
+    elif isinstance(settings, dict):
+        settings = settings
+
+    elif isinstance(settings, str):
+        filepath = settings
+        with open(filepath, 'r', encoding='utf-8') as fp:
             settings = json.load(fp)
 
     params = {}
