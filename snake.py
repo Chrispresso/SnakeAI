@@ -332,17 +332,29 @@ class Snake(Individual):
 
         # Is the next position we want to move valid?
         if self._is_valid(next_pos):
-            self.snake_array.appendleft(next_pos)
-            self._body_locations.update({next_pos})  # Add next position to the set
-            # If we just consumed the apple, generate a new one.
-            # No need to pop the tail of the snake since the snake is growing here
-            if next_pos == self.apple_location:
+            # Tail
+            if next_pos == self.snake_array[-1]:
+                # Pop tail and add next_pos (same as tail) to front
+                # No need to remove tail from _body_locations since it will go back in anyway
+                self.snake_array.pop()
+                self.snake_array.appendleft(next_pos) 
+            # Eat the apple
+            elif next_pos == self.apple_location:
                 self.score += 1
                 self._frames_since_last_apple = 0
+                # Move head
+                self.snake_array.appendleft(next_pos)
+                self._body_locations.update({next_pos})
+                # Don't remove tail since the snake grew
                 self.generate_apple()
+            # Normal movement
             else:
+                # Move head
+                self.snake_array.appendleft(next_pos)
+                self._body_locations.update({next_pos})
+                # Remove tail
                 tail = self.snake_array.pop()
-                self._body_locations.symmetric_difference_update({tail})  # Remove tail from the set
+                self._body_locations.symmetric_difference_update({tail})
 
             # Figure out which direction the tail is moving
             p2 = self.snake_array[-2]
