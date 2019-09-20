@@ -18,12 +18,12 @@ import random
 import csv
 
 
-SQUARE_SIZE = (35, 35)
+SQUARE_SIZE = (12, 12)
 
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, settings, show=True, fps=10):
+    def __init__(self, settings, show=True, fps=200):
         super().__init__()
         # self.setAutoFillBackground(True)
         # palette = self.palette()
@@ -66,13 +66,13 @@ class MainWindow(QtWidgets.QMainWindow):
         
         individuals: List[Individual] = []
 
-        for _ in range(self.settings['num_parents']):
-            individual = Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture'],
-                              hidden_activation=self.settings['hidden_layer_activation'],
-                              output_activation=self.settings['output_layer_activation'],
-                              lifespan=self.settings['lifespan'],
-                              apple_and_self_vision=self.settings['apple_and_self_vision'])
-            individuals.append(individual)
+        # for _ in range(self.settings['num_parents']):
+        #     individual = Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture'],
+        #                       hidden_activation=self.settings['hidden_layer_activation'],
+        #                       output_activation=self.settings['output_layer_activation'],
+        #                       lifespan=self.settings['lifespan'],
+        #                       apple_and_self_vision=self.settings['apple_and_self_vision'])
+        #     individuals.append(individual)
 
         # settings_location = r'C:\Users\cjwil\dev\SnakeAI\test_del3\settings.json'
         # for i in range(0, 981+1, 1):
@@ -96,6 +96,13 @@ class MainWindow(QtWidgets.QMainWindow):
         #     individual.encode_chromosome()
 
         self._current_individual = 0
+        # self.loaded = [1138
+        #         ]
+
+        # for load in self.loaded:
+        #     snake = load_snake(r'C:\Users\cjwil\Downloads\test_del3', 'best_ind{}'.format(load), self.settings)
+        #     individuals.append(snake)
+
         # for i in range(0, 65+1):
         #     snake = load_snake('test_selection', 'best_ind' + str(i))
         #     new_snake = Snake(snake.board_size, chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture)
@@ -103,14 +110,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # random.shuffle(individuals)
 
+        snake = load_snake(r'C:\Users\cjwil\Downloads\da_best', 'best_ind1', self.settings)
+        individuals = [snake]
         self.population = Population(individuals)
 
 
         # 
-        # # snake = load_snake('test_del2', 'best_ind73')
         # snake = Snake((10, 10), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
         #               apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
-        # self.population.individuals[0] = snake
+        self.population.individuals[0] = snake
         self.snake = self.population.individuals[self._current_individual]
         # self.snake = snake
         self.current_generation = 0
@@ -189,22 +197,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ga_window.best_fitness_label.setText('{:.2E}'.format(Decimal(fitness)))
 
             self._current_individual += 1
-            
+            # if True:
             # Next generation
-            if (self.current_generation > 0 and self._current_individual == self._next_gen_size) or\
-                (self.current_generation == 0 and self._current_individual == settings['num_parents']):
-                print(self.settings)
-                print('======================= Gneration {} ======================='.format(self.current_generation))
-                print('----Max fitness:', self.population.fittest_individual.fitness)
-                print('----Best Score:', self.population.fittest_individual.score)
-                print('----Average fitness:', self.population.average_fitness)
-                save_snake('1_0_MPL_500_1000_eta100_life_inf', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
-                self.next_generation()
-            else:
+            # if (self.current_generation > 0 and self._current_individual == self._next_gen_size) or\
+            #     (self.current_generation == 0 and self._current_individual == settings['num_parents']):
+            #     print(self.settings)
+            #     print('======================= Gneration {} ======================='.format(self.current_generation))
+            #     print('----Max fitness:', self.population.fittest_individual.fitness)
+            #     print('----Best Score:', self.population.fittest_individual.score)
+            #     print('----Average fitness:', self.population.average_fitness)
+            #     save_snake('1_0_MPL_500_1000_eta100_life_inf', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
+            #     self.next_generation()
+            # else:
                 
-                current_pop = self.settings['num_parents'] if self.current_generation == 0 else self._next_gen_size
-                self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, current_pop))
-
+            #     current_pop = self.settings['num_parents'] if self.current_generation == 0 else self._next_gen_size
+            #     self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, current_pop))
+            self._increment_generation()
             self.snake = self.population.individuals[self._current_individual]
             self.snake_widget_window.snake = self.snake
             self.nn_viz_window.snake = self.snake
@@ -213,13 +221,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # import sys
         # sys.exit(-1)
         self._increment_generation()
-        self._current_individual = 0
+        # self._current_individual = 0
 
         # Calculate fitness of individuals
         for individual in self.population.individuals:
             individual.calculate_fitness()
 
-        save_stats(self.population, r'/home/chrispresso/dev/SnakeAI', '1_0_MPL_500_1000_eta100_life_inf')
+        # save_stats(self.population, r'/home/chrispresso/dev/SnakeAI', '1_0_MPL_500_1000_eta100_life_inf')
         
         self.population.individuals = elitism_selection(self.population, self.settings['num_parents'])
         
@@ -306,6 +314,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _increment_generation(self):
         self.current_generation += 1
         self.ga_window.current_generation_label.setText(str(self.current_generation + 1))
+        # self.ga_window.current_generation_label.setText("<font color='red'>" + str(self.loaded[self.current_generation]) + "</font>")
 
     def _crossover(self, parent1_weights: np.ndarray, parent2_weights: np.ndarray,
                    parent1_bias: np.ndarray, parent2_bias: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -382,7 +391,8 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         #### Generation stuff ####
         # Generation
         self._create_label_widget_in_grid('Generation: ', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
-        self.current_generation_label = self._create_label_widget('1', font)
+        self.current_generation_label = self._create_label_widget('2', font)
+        self.current_generation_label.setText("<font color='red'>" + '2' + "</font>")
         grid.addWidget(self.current_generation_label, ROW, STATS_COL, TOP_LEFT)
         ROW += 1
 

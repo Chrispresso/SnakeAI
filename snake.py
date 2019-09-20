@@ -265,7 +265,7 @@ class Snake(Individual):
         width = self.board_size[0]
         height = self.board_size[1]
         # Find all possible points where the snake is not currently
-        possibilities = [divmod(i, height) for i in range(width * height) if divmod(i, height) not in self.snake_array]
+        possibilities = [divmod(i, height) for i in range(width * height) if divmod(i, height) not in self._body_locations]
         if possibilities:
             loc = self.rand_apple.choice(possibilities)
             self.apple_location = Point(loc[0], loc[1])
@@ -372,7 +372,7 @@ class Snake(Individual):
             self._frames_since_last_apple += 1
             #@TODO: MAybe make max number of a variable
             threshold = min(max(self.score * 75, 100), 750)
-            if self._frames_since_last_apple > 100:
+            if self._frames_since_last_apple > 2500:
                 self.is_alive = False
                 return False
 
