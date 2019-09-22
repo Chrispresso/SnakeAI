@@ -11,24 +11,24 @@ from genetic_algorithm.population import Population
 from genetic_algorithm.selection import elitism_selection, roulette_wheel_selection, tournament_selection
 from genetic_algorithm.mutation import gaussian_mutation, random_uniform_mutation
 from genetic_algorithm.crossover import simulated_binary_crossover as SBX
-from genetic_algorithm.crossover import uniform_binary_crossover, single_point_binary_crossover, single_row_binary_crossover, uniform_crossover_test
+from genetic_algorithm.crossover import uniform_binary_crossover, single_point_binary_crossover
 from math import sqrt
 from decimal import Decimal
 import random
 import csv
 
 
-SQUARE_SIZE = (12, 12)
+SQUARE_SIZE = (35, 35)
 
 
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, settings, show=True, fps=200):
         super().__init__()
-        # self.setAutoFillBackground(True)
-        # palette = self.palette()
-        # palette.setColor(self.backgroundRole(), QtGui.QColor(0, 0, 0))
-        # self.setPalette(palette)
+        self.setAutoFillBackground(True)
+        palette = self.palette()
+        palette.setColor(self.backgroundRole(), QtGui.QColor(240, 240, 240))
+        self.setPalette(palette)
         self.settings = settings
         self._SBX_eta = self.settings['SBX_eta']
         self._mutation_bins = np.cumsum([self.settings['probability_gaussian'],
@@ -66,73 +66,31 @@ class MainWindow(QtWidgets.QMainWindow):
         
         individuals: List[Individual] = []
 
-        # for _ in range(self.settings['num_parents']):
-        #     individual = Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture'],
-        #                       hidden_activation=self.settings['hidden_layer_activation'],
-        #                       output_activation=self.settings['output_layer_activation'],
-        #                       lifespan=self.settings['lifespan'],
-        #                       apple_and_self_vision=self.settings['apple_and_self_vision'])
-        #     individuals.append(individual)
-
-        # settings_location = r'C:\Users\cjwil\dev\SnakeAI\test_del3\settings.json'
-        # for i in range(0, 981+1, 1):
-        #     snake = load_snake(r'C:\Users\cjwil\dev\SnakeAI\test_del3', 'best_ind{}'.format(i), self.settings)
-        #     individuals.append(snake)
-
-        # print('loaded all')
-
-        # snake = load_snake('/home/chrispresso/Downloads/1_0_MPL_500_1000_eta100', 'best_ind784', self.settings)
-        # snake = Snake((50,50), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture)
-        # individuals.append(snake)
+        for _ in range(self.settings['num_parents']):
+            individual = Snake(self.board_size, hidden_layer_architecture=self.settings['hidden_network_architecture'],
+                              hidden_activation=self.settings['hidden_layer_activation'],
+                              output_activation=self.settings['output_layer_activation'],
+                              lifespan=self.settings['lifespan'],
+                              apple_and_self_vision=self.settings['apple_and_self_vision'])
+            individuals.append(individual)
 
         self.best_fitness = 0
         self.best_score = 0
 
-        
-        # snake = Snake(snake.board_size, chromosome=snake.network.params, start_pos=Point(5,5), hidden_layer_architecture=snake.hidden_layer_architecture)
-        # self.population.individuals[0] = snake
-
-        # for individual in self.population.individuals:
-        #     individual.encode_chromosome()
-
         self._current_individual = 0
-        # self.loaded = [1138
-        #         ]
-
-        # for load in self.loaded:
-        #     snake = load_snake(r'C:\Users\cjwil\Downloads\test_del3', 'best_ind{}'.format(load), self.settings)
-        #     individuals.append(snake)
-
-        # for i in range(0, 65+1):
-        #     snake = load_snake('test_selection', 'best_ind' + str(i))
-        #     new_snake = Snake(snake.board_size, chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture)
-        #     individuals.append(new_snake)
-
-        # random.shuffle(individuals)
-
-        snake = load_snake(r'C:\Users\cjwil\Downloads\da_best', 'best_ind1', self.settings)
-        individuals = [snake]
         self.population = Population(individuals)
 
-
-        # 
-        # snake = Snake((10, 10), chromosome=snake.network.params, hidden_layer_architecture=snake.hidden_layer_architecture,
-        #               apple_seed=snake.apple_seed, starting_direction=snake.starting_direction, start_pos=snake.start_pos)
-        self.population.individuals[0] = snake
         self.snake = self.population.individuals[self._current_individual]
-        # self.snake = snake
         self.current_generation = 0
 
         self.init_window()
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
-        # self.timer.setInterval(10)
         self.timer.start(1000./fps)
 
         if show:
             self.show()
-        # self.update()
 
     def init_window(self):
         self.centralWidget = QtWidgets.QWidget(self)
@@ -197,37 +155,30 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ga_window.best_fitness_label.setText('{:.2E}'.format(Decimal(fitness)))
 
             self._current_individual += 1
-            # if True:
             # Next generation
-            # if (self.current_generation > 0 and self._current_individual == self._next_gen_size) or\
-            #     (self.current_generation == 0 and self._current_individual == settings['num_parents']):
-            #     print(self.settings)
-            #     print('======================= Gneration {} ======================='.format(self.current_generation))
-            #     print('----Max fitness:', self.population.fittest_individual.fitness)
-            #     print('----Best Score:', self.population.fittest_individual.score)
-            #     print('----Average fitness:', self.population.average_fitness)
-            #     save_snake('1_0_MPL_500_1000_eta100_life_inf', 'best_ind' + str(self.current_generation), self.population.fittest_individual, settings)
-            #     self.next_generation()
-            # else:
-                
-            #     current_pop = self.settings['num_parents'] if self.current_generation == 0 else self._next_gen_size
-            #     self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, current_pop))
-            self._increment_generation()
+            if (self.current_generation > 0 and self._current_individual == self._next_gen_size) or\
+                (self.current_generation == 0 and self._current_individual == settings['num_parents']):
+                print(self.settings)
+                print('======================= Gneration {} ======================='.format(self.current_generation))
+                print('----Max fitness:', self.population.fittest_individual.fitness)
+                print('----Best Score:', self.population.fittest_individual.score)
+                print('----Average fitness:', self.population.average_fitness)
+                self.next_generation()
+            else:
+                current_pop = self.settings['num_parents'] if self.current_generation == 0 else self._next_gen_size
+                self.ga_window.current_individual_label.setText('{}/{}'.format(self._current_individual + 1, current_pop))
+
             self.snake = self.population.individuals[self._current_individual]
             self.snake_widget_window.snake = self.snake
             self.nn_viz_window.snake = self.snake
 
     def next_generation(self):
-        # import sys
-        # sys.exit(-1)
         self._increment_generation()
-        # self._current_individual = 0
+        self._current_individual = 0
 
         # Calculate fitness of individuals
         for individual in self.population.individuals:
             individual.calculate_fitness()
-
-        # save_stats(self.population, r'/home/chrispresso/dev/SnakeAI', '1_0_MPL_500_1000_eta100_life_inf')
         
         self.population.individuals = elitism_selection(self.population, self.settings['num_parents'])
         
@@ -391,8 +342,7 @@ class GeneticAlgoWidget(QtWidgets.QWidget):
         #### Generation stuff ####
         # Generation
         self._create_label_widget_in_grid('Generation: ', font_bold, grid, ROW, LABEL_COL, TOP_LEFT)
-        self.current_generation_label = self._create_label_widget('2', font)
-        self.current_generation_label.setText("<font color='red'>" + '2' + "</font>")
+        self.current_generation_label = self._create_label_widget('1', font)
         grid.addWidget(self.current_generation_label, ROW, STATS_COL, TOP_LEFT)
         ROW += 1
 

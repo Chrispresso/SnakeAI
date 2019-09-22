@@ -39,10 +39,10 @@ class DrawableVision(object):
 class Snake(Individual):
     def __init__(self, board_size: Tuple[int, int],
                  chromosome: Optional[Dict[str, List[np.ndarray]]] = None,
-                 start_pos: Optional[Point] = None,  # @TODO: None/Point(10,10),31,10
+                 start_pos: Optional[Point] = None, 
                  apple_seed: Optional[int] = None,
                  initial_velocity: Optional[str] = None,
-                 starting_direction: Optional[str] = None,  # @TODO: 'd'/None
+                 starting_direction: Optional[str] = None,
                  hidden_layer_architecture: Optional[List[int]] = [1123125, 9],
                  hidden_activation: Optional[ActivationFunction] = 'relu',
                  output_activation: Optional[ActivationFunction] = 'sigmoid',
@@ -129,11 +129,6 @@ class Snake(Individual):
     
     def calculate_fitness(self):
         # Give positive minimum fitness for roulette wheel selection
-        # self._fitness = 200*self.score + .25*self._frames
-        # if self.score == 0:
-        #     self._fitness = .25 * self._frames
-        # else:
-        #     self._fitness = .25*self._frames * ((2 ** self.score) + (self.score * 1200)) - (self._frames * 100)
         self._fitness = (self._frames) + ((2**self.score) + (self.score**2.1)*500) - (((.25 * self._frames)**1.3) * (self.score**1.2))
         # self._fitness = (self._frames) + ((2**self.score) + (self.score**2.1)*500) - (((.25 * self._frames)) * (self.score))
         self._fitness = max(self._fitness, .1)
@@ -238,9 +233,6 @@ class Snake(Individual):
             self.vision_as_array[va_index + 1, 0] = vision.dist_to_apple
             self.vision_as_array[va_index + 2, 0] = vision.dist_to_self
 
-
-        # return
-        # return # @TODO: Re-add the one-hot encodings below
         i = len(self._vision) * 3  # Start at the end
 
         direction = self.direction[0].lower()
@@ -370,9 +362,8 @@ class Snake(Individual):
                 self.tail_direction = 'u'
 
             self._frames_since_last_apple += 1
-            #@TODO: MAybe make max number of a variable
-            threshold = min(max(self.score * 75, 100), 750)
-            if self._frames_since_last_apple > 2500:
+            #@NOTE: If you have different sized grids you may want to change this
+            if self._frames_since_last_apple > 100:
                 self.is_alive = False
                 return False
 

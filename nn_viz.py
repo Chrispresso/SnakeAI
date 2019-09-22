@@ -113,11 +113,3 @@ class NeuralNetworkViz(QtWidgets.QWidget):
                     end = self.neuron_locations[(l, curr_node)]
                     # Offset start[0] by diameter of circle so that the line starts on the right of the circle
                     painter.drawLine(start[0] + radius*2, start[1], end[0], end[1])
-
-
-
-if __name__ == "__main__":
-    ff = FeedForwardNetwork([8*3+8,12,9,4], sigmoid, linear)
-    app = QtWidgets.QApplication(sys.argv)
-    ex = NeuralNetworkViz(ff)
-    sys.exit(app.exec_())

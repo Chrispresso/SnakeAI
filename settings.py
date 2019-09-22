@@ -47,7 +47,7 @@ settings = {
     ## Selection ##
 
     # Number of parents that will be used for reproducing
-    'num_parents':                 500, #500
+    'num_parents':                 500,
     # Number of offspring that will be created. Keep num_offspring >= num_parents
     'num_offspring':               1000,
     # The selection type to use for the next generation.

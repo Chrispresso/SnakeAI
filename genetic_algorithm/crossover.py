@@ -35,34 +35,6 @@ def uniform_binary_crossover(parent1: np.ndarray, parent2: np.ndarray) -> Tuple[
 
     return offspring1, offspring2
 
-
-def single_row_binary_crossover(parent1: np.ndarray, parent2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    offspring1 = parent1.copy()
-    offspring2 = parent2.copy()
-
-    row = np.random.randint(0, parent1.shape[0])
-
-    offspring1[:row, :] = parent2[:row, :]
-    offspring2[:row, :] = parent1[:row, :]
-
-    return offspring1, offspring2
-
-def uniform_crossover_test(parent1: np.ndarray, parent2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    offspring1 = parent1.copy()
-    offspring2 = parent2.copy()
-
-    rows, cols = parent2.shape
-    row = np.random.randint(0, rows)
-    col = np.random.randint(0, cols)
-
-    offspring1[:, :col] = parent2[:, :col]
-    offspring2[:, :col] = parent1[:, :col]
-
-    offspring1[:row+1, :] = parent2[:row+1, :]
-    offspring2[:row+1, :] = parent1[:row+1, :]
-
-    return offspring1, offspring2
-
 def single_point_binary_crossover(parent1: np.ndarray, parent2: np.ndarray, major='r') -> Tuple[np.ndarray, np.ndarray]:
     offspring1 = parent1.copy()
     offspring2 = parent2.copy()
