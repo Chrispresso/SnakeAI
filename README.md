@@ -7,7 +7,7 @@ There exist three dependencies:
 2. pyqt5
 3. Python3.6+
 
-To install `numpy` and `pyqt5`. This can be accomplished through pip: `pip3 install pyqt5 numpy`
+To install dependencies, run `pip3 install -r requirements.txt`
 
 ## Getting started
 
