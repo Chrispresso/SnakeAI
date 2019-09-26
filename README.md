@@ -1,5 +1,6 @@
 # Snake AI
 # Current Version 1.0
+## Licensed under MIT license - so you can use this however you please :)
 ## Dependencies
 There exist three dependencies:
 
