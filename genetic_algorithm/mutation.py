@@ -3,7 +3,6 @@
 # 12.4.3
 
 import numpy as np
-from scipy import stats
 from typing import List, Union, Optional
 from .individual import Individual
 
@@ -95,6 +94,7 @@ def exponential_mutation(chromosome: np.ndarray, xi: Union[float, np.ndarray], p
     chromosome[mutation_array] += delta[mutation_array]
 
 def mmo_mutation(chromosome: np.ndarray, prob_mutation: float) -> None:
+    from scipy import stats
     mutation_array = np.random.random(chromosome.shape) < prob_mutation
     normal = np.random.normal(size=chromosome.shape)  # Eq 11.21
     cauchy = stats.cauchy.rvs(size=chromosome.shape)  # Eq 11.22
