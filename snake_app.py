@@ -51,7 +51,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         
         self.board_size = settings['board_size']
-        self.border = (0, 10, 0, 10)  # Left, Top, Right, Bottom
+        #self.border = (0, 10, 0, 10)  # Left, Top, Right, Bottom
+        self.border = (0, self.board_size[0], 0, self.board_size[1])  # Left, Top, Right, Bottom
         self.snake_widget_width = SQUARE_SIZE[0] * self.board_size[0]
         self.snake_widget_height = SQUARE_SIZE[1] * self.board_size[1]
 
