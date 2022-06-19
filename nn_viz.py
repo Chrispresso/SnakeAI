@@ -80,13 +80,13 @@ class NeuralNetworkViz(QtWidgets.QWidget):
                 # Output layer
                 elif layer == len(layer_nodes) - 1:
                     text = ('U', 'D', 'L', 'R')[node]
-                    painter.drawText(h_offset + 30, node * (radius*2 + vertical_space) + v_offset + 1.5*radius, text)
+                    painter.drawText(int(h_offset + 30), int(node * (radius*2 + vertical_space) + v_offset + 1.5*radius), text)
                     if node == max_out:
                         painter.setBrush(QtGui.QBrush(Qt.green))
                     else:
                         painter.setBrush(QtGui.QBrush(Qt.white))
 
-                painter.drawEllipse(x_loc, y_loc, radius*2, radius*2)
+                painter.drawEllipse(int(x_loc), int(y_loc), int(radius*2), int(radius*2))
             h_offset += 150
 
         # Reset horizontal offset for the weights
@@ -112,4 +112,4 @@ class NeuralNetworkViz(QtWidgets.QWidget):
                     start = self.neuron_locations[(l-1, prev_node)]
                     end = self.neuron_locations[(l, curr_node)]
                     # Offset start[0] by diameter of circle so that the line starts on the right of the circle
-                    painter.drawLine(start[0] + radius*2, start[1], end[0], end[1])
+                    painter.drawLine(int(start[0] + radius*2), int(start[1]), int(end[0]), int(end[1]))
