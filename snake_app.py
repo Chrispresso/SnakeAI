@@ -87,7 +87,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update)
-        self.timer.start(1000./fps)
+        self.timer.start(int(1000./fps))
 
         if show:
             self.show()
@@ -524,19 +524,19 @@ class SnakeWidget(QtWidgets.QWidget):
             painter.setPen(QtGui.QPen(Qt.green))
             end_x = drawable_vision.apple_location.x * SQUARE_SIZE[0] + SQUARE_SIZE[0]/2
             end_y = drawable_vision.apple_location.y * SQUARE_SIZE[1] + SQUARE_SIZE[1]/2
-            painter.drawLine(start_x, start_y, end_x, end_y)
+            painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
             return end_x, end_y
 
         def _draw_line_to_self(painter: QtGui.QPainter, start_x: int, start_y: int, drawable_vision: DrawableVision) -> Tuple[int, int]:
             painter.setPen(QtGui.QPen(Qt.red))
             end_x = drawable_vision.self_location.x * SQUARE_SIZE[0] + SQUARE_SIZE[0]/2
             end_y = drawable_vision.self_location.y * SQUARE_SIZE[1] + SQUARE_SIZE[1]/2
-            painter.drawLine(start_x, start_y, end_x, end_y)
+            painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
             return end_x, end_y
 
         for point in self.snake.snake_array:
-            painter.drawRect(point.x * SQUARE_SIZE[0],  # Upper left x-coord
-                             point.y * SQUARE_SIZE[1],  # Upper left y-coord
+            painter.drawRect(int(point.x * SQUARE_SIZE[0]),  # Upper left x-coord
+                             int(point.y * SQUARE_SIZE[1]),  # Upper left y-coord
                              SQUARE_SIZE[0],            # Width
                              SQUARE_SIZE[1])            # Height
 
@@ -567,7 +567,7 @@ class SnakeWidget(QtWidgets.QWidget):
                         painter.setPen(QtGui.QPen(Qt.black))
                         end_x = drawable_vision.wall_location.x * SQUARE_SIZE[0] + SQUARE_SIZE[0]/2
                         end_y = drawable_vision.wall_location.y * SQUARE_SIZE[1] + SQUARE_SIZE[1]/2 
-                        painter.drawLine(start_x, start_y, end_x, end_y)
+                        painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
 
 
     def draw_apple(self, painter: QtGui.QPainter) -> None:
@@ -577,8 +577,8 @@ class SnakeWidget(QtWidgets.QWidget):
             painter.setPen(QtGui.QPen(Qt.black))
             painter.setBrush(QtGui.QBrush(Qt.green))
 
-            painter.drawRect(apple_location.x * SQUARE_SIZE[0],
-                             apple_location.y * SQUARE_SIZE[1],
+            painter.drawRect(int(apple_location.x * SQUARE_SIZE[0]),
+                             int(apple_location.y * SQUARE_SIZE[1]),
                              SQUARE_SIZE[0],
                              SQUARE_SIZE[1])
 
